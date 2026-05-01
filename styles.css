@@ -2,65 +2,112 @@
   --paper:#f3e7c9;
   --paper-dark:#e6d5ad;
   --ink:#2a1a0e;
-  --maroon:#7a1f2b;     /* Haileybury maroon */
+  --maroon:#7a1f2b;
   --gold:#c8a44a;
   --sage:#6c7a4a;
   --chalk:#f6f3e7;
   --slate:#2b3340;
   --shadow: 0 14px 40px rgba(50,30,10,.35);
+
+  /* HUD width — used by .board grid in landscape */
+  --hud-w: 220px;
+
+  /* Honour the iOS safe-area insets so the page never sits under the notch */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
 }
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%}
+html{height:100dvh}
 body{
+  margin:0;
   font-family:'Patrick Hand',cursive;
   color:var(--ink);
   background:
     radial-gradient(ellipse at top,#fff7e2 0%,transparent 60%),
     repeating-linear-gradient(135deg, rgba(120,80,30,.05) 0 2px, transparent 2px 6px),
     linear-gradient(#f6e9c8,#e9d6a4);
-  min-height:100vh;
-  overflow-x:hidden;
+  overflow:hidden;
+  min-height:100dvh;
+  height:100dvh;
 }
-.hall{max-width:1280px;margin:0 auto;padding:18px 24px 36px}
 
-/* ---- Banner ---- */
+/* ======================================================
+   Page shell — fills the viewport, banner on top, the
+   board (canvas + HUD) takes the remaining height.
+   ====================================================== */
+.hall{
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  padding:
+    calc(var(--safe-t) + 6px)
+    calc(var(--safe-r) + 12px)
+    calc(var(--safe-b) + 6px)
+    calc(var(--safe-l) + 12px);
+  gap:8px;
+}
+
+/* ---- Title banner ---- */
 .title-banner{
+  flex:0 0 auto;
   text-align:center;
   font-family:'Caveat',cursive;
   background:
     repeating-linear-gradient(45deg, rgba(0,0,0,.07) 0 6px, transparent 6px 12px),
     var(--maroon);
   color:var(--gold);
-  border-radius:14px;
-  padding:14px 24px 10px;
-  margin-bottom:18px;
-  box-shadow: 0 8px 0 rgba(0,0,0,.18), inset 0 0 0 4px rgba(200,164,74,.4);
+  border-radius:12px;
+  padding:3px 22px 2px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.18), inset 0 0 0 3px rgba(200,164,74,.4);
   transform:rotate(-.4deg);
   position:relative;
 }
 .title-banner::before, .title-banner::after{
-  content:"";position:absolute;top:50%;width:30px;height:30px;border-radius:50%;
+  content:"";position:absolute;top:50%;width:18px;height:18px;border-radius:50%;
   background:var(--gold); transform:translateY(-50%);
   box-shadow: inset 0 0 0 3px var(--maroon);
 }
-.title-banner::before{left:10px}
-.title-banner::after{right:10px}
-.title-banner span{font-size:54px;font-weight:700;letter-spacing:1px;display:block;line-height:1}
-.title-banner small{display:block;font-size:22px;color:#f4e0a8;margin-top:4px;font-family:'Patrick Hand',cursive}
+.title-banner::before{left:8px}
+.title-banner::after{right:8px}
+.title-banner span{font-size:clamp(20px, 2.6vw, 32px);font-weight:700;letter-spacing:1px;display:block;line-height:1}
+.title-banner small{display:block;font-size:clamp(11px, 1.2vw, 15px);color:#f4e0a8;margin-top:0;font-family:'Patrick Hand',cursive}
 
-/* ---- Board layout ---- */
-.board{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
-.game-wrap{position:relative}
+/* ---- Board grid: canvas (square-ish) + HUD ---- */
+.board{
+  flex:1 1 auto;
+  min-height:0;
+  display:grid;
+  gap:12px;
+  /* default landscape — HUD on the right */
+  grid-template-columns: minmax(0, 1fr) var(--hud-w);
+  grid-template-rows: minmax(0, 1fr);
+  align-items:stretch;
+}
+
+/* ---- Game wrapper: keeps the 9:10 aspect ratio of the canvas
+       and grows to fill whichever dimension is smaller ---- */
+.game-wrap{
+  position:relative;
+  aspect-ratio: 9 / 10;
+  height:100%;
+  max-height:100%;
+  max-width:100%;
+  margin:0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
 canvas#game{
   width:100%;
-  max-width:900px;
-  height:auto;
+  height:100%;
   background:transparent;
-  border-radius:16px;
+  border-radius:14px;
   box-shadow:var(--shadow);
   display:block;
   outline:none;
-  /* iPad / touch: stop the page panning, zooming, or selecting while playing */
   touch-action:none;
   -webkit-user-select:none;
   user-select:none;
@@ -68,88 +115,219 @@ canvas#game{
   -webkit-touch-callout:none;
 }
 
-/* ---- HUD cards ---- */
-.hud{display:flex;flex-direction:column;gap:14px}
+/* ---- HUD column (or row in portrait) ---- */
+.hud{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  min-height:0;
+  overflow:auto;
+  scrollbar-width:thin;
+  padding-right:2px;
+}
+.hud::-webkit-scrollbar{width:8px}
+.hud::-webkit-scrollbar-thumb{background:rgba(120,80,30,.35);border-radius:8px}
+
 .card{
   background:var(--paper);
   border:2px dashed var(--ink);
-  border-radius:14px;
-  padding:12px 14px;
-  box-shadow:3px 3px 0 rgba(0,0,0,.15);
+  border-radius:10px;
+  padding:6px 10px;
+  box-shadow:2px 2px 0 rgba(0,0,0,.15);
   position:relative;
+  flex-shrink:0;
 }
 .card:nth-child(odd){transform:rotate(-.6deg)}
 .card:nth-child(even){transform:rotate(.5deg)}
-.card h2{margin:0 0 6px;font-family:'Caveat',cursive;font-size:28px;color:var(--maroon);line-height:1}
-.score-card p{font-family:'Special Elite',monospace;font-size:46px;margin:0;color:var(--ink);line-height:1}
-.score-card small{color:#5a432a}
-.next-card{display:flex;flex-direction:column;align-items:center;text-align:center}
+.card h2{margin:0 0 2px;font-family:'Caveat',cursive;font-size:19px;color:var(--maroon);line-height:1}
+
+.score-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px}
+.score-card h2{grid-column:1 / -1}
+.score-card p{font-family:'Special Elite',monospace;font-size:30px;margin:0;color:var(--ink);line-height:1}
+.score-card small{color:#5a432a;text-align:right;font-size:12px}
+
+.next-card{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:8px}
+.next-card h2{grid-column:1 / -1}
 .next-card canvas{
-  width:140px;height:140px;
+  width:64px;height:64px;
   background:radial-gradient(circle,#fff8dd 0%,transparent 72%);
-  border-radius:12px;
+  border-radius:8px;
 }
-.next-card small{font-size:18px;margin-top:4px;font-style:italic}
-.combo-card ol{margin:0;padding-left:22px;font-size:16px;line-height:1.45}
+.next-card small{font-size:13px;font-style:italic}
+
+/* ---- Menu list ---- */
+.combo-card ol{margin:0;padding-left:18px;font-size:12px;line-height:1.35}
 .combo-card li{margin-bottom:1px}
 .combo-card li.cur{color:var(--maroon);font-weight:700;text-decoration:underline wavy var(--gold)}
-.help-card ul{margin:0;padding-left:18px;font-size:16px;line-height:1.45}
+
+/* ---- Honours Board (leaderboard) ---- */
+.honours-card{}
+.honours-list{
+  margin:0;
+  padding:0;
+  list-style:none;
+  font-family:'Special Elite',monospace;
+  font-size:12px;
+  line-height:1.35;
+  counter-reset:rank;
+}
+.honours-list li{
+  display:grid;
+  grid-template-columns: 22px 1fr auto;
+  gap:6px;
+  align-items:baseline;
+  border-bottom:1px dashed rgba(40,20,8,.35);
+  padding:2px 2px;
+}
+.honours-list li:last-child{border-bottom:none}
+.honours-list li.empty{
+  display:block; font-style:italic; opacity:.7; border:none; text-align:center;
+  font-family:'Patrick Hand',cursive; font-size:14px;
+}
+.honours-list li::before{
+  content: counter(rank) ".";
+  counter-increment: rank;
+  color:var(--maroon);
+  font-weight:700;
+}
+.honours-list .name{
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.honours-list .score{
+  color:var(--ink); font-weight:700; text-align:right;
+}
+.honours-list li.you{
+  background:rgba(200,164,74,.25);
+  border-radius:4px;
+}
+.honours-list li.you .name{color:var(--maroon)}
+
+.ghost-btn{
+  margin-top:6px;
+  font-family:'Patrick Hand',cursive;
+  font-size:13px;
+  background:transparent; color:var(--ink);
+  border:1px dashed var(--ink); border-radius:6px;
+  padding:2px 8px; cursor:pointer;
+}
+.ghost-btn:hover{background:rgba(200,164,74,.2)}
+
+.help-card ul{margin:0;padding-left:16px;font-size:12px;line-height:1.35}
 kbd{
   background:#fff7df;border:1.5px solid var(--ink);border-bottom-width:3px;
-  border-radius:5px;padding:0 5px;font-family:'Special Elite',monospace;font-size:13px;
+  border-radius:5px;padding:0 5px;font-family:'Special Elite',monospace;font-size:12px;
 }
-.foot{margin-top:18px;text-align:center;color:#6a4d2a}
 
 /* ---- Overlay ---- */
 .overlay{
   position:absolute;inset:0;background:rgba(20,10,0,.55);
   display:flex;align-items:center;justify-content:center;z-index:10;
-  border-radius:16px;
+  border-radius:14px;
 }
 .overlay.hidden{display:none}
 .overlay .panel{
   background:var(--paper);
   border:3px dashed var(--ink);
   border-radius:18px;
-  padding:24px 36px 28px;
+  padding:18px 24px 22px;
   text-align:center;
   font-family:'Caveat',cursive;
   transform:rotate(-1deg);
-  max-width:560px;
+  max-width:min(560px, 92%);
+  max-height:92%;
+  overflow:auto;
   box-shadow:var(--shadow);
 }
-.overlay h1{font-size:54px;color:var(--maroon);margin:0 0 6px;line-height:1}
-.overlay p{font-size:22px;margin:6px 0}
-.overlay .hint{font-family:'Patrick Hand',cursive;color:#5a432a;margin-top:8px}
-.overlay .btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.overlay h1{font-size:44px;color:var(--maroon);margin:0 0 4px;line-height:1}
+.overlay p{font-size:20px;margin:4px 0}
+.overlay .hint{font-family:'Patrick Hand',cursive;color:#5a432a;margin-top:6px}
+
+.score-box{margin:8px 0}
+.score-box.hidden{display:none}
+.score-box p{font-size:22px}
+.score-box b{font-family:'Special Elite',monospace;color:var(--maroon)}
+.name-label{display:block;font-size:18px;margin-top:4px}
+.name-label input{
+  display:block;
+  margin:4px auto 0;
+  font-family:'Caveat',cursive;
+  font-size:24px;
+  text-align:center;
+  background:#fff7df;
+  border:2px dashed var(--ink); border-radius:8px;
+  padding:4px 10px; width:min(280px, 80%);
+  color:var(--ink);
+}
+.name-label input:focus{outline:3px solid var(--gold)}
+
+.board-list{
+  margin:8px 0; padding:8px 14px; max-height:220px; overflow:auto;
+  background:rgba(255,255,255,.45);
+  border:1px dashed var(--ink); border-radius:8px;
+  list-style:none; counter-reset:rank;
+  font-family:'Special Elite',monospace; font-size:14px;
+  text-align:left;
+}
+.board-list.hidden{display:none}
+.board-list li{
+  display:grid; grid-template-columns: 28px 1fr auto;
+  gap:8px; padding:3px 2px;
+  border-bottom:1px dashed rgba(40,20,8,.3);
+}
+.board-list li:last-child{border-bottom:none}
+.board-list li::before{
+  content: counter(rank) ".";
+  counter-increment: rank;
+  color:var(--maroon); font-weight:700;
+}
+.board-list li.you{background:rgba(200,164,74,.3);border-radius:4px}
+
+.btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
 .overlay button{
   font-family:'Caveat',cursive;
-  font-size:28px;
+  font-size:24px;
   background:var(--maroon);color:var(--gold);
-  border:none;border-radius:10px;padding:8px 22px;
+  border:none;border-radius:10px;padding:6px 20px;
   cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.25);
   transition:transform .08s ease;
 }
-.overlay button.btn-secondary{background:#c8a44a;color:#3a1e0c}
+.overlay button.btn-secondary{background:var(--gold);color:#3a1e0c}
 .overlay button.hidden{display:none}
 .overlay button:hover{transform:translateY(-2px)}
 .overlay button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
 
-@media (max-width:980px){
-  .board{grid-template-columns:1fr}
-  .hud{flex-direction:row;flex-wrap:wrap}
-  .card{flex:1 1 200px}
-  .title-banner span{font-size:38px}
-  .title-banner small{font-size:18px}
-  .help-card{order:99}      /* push keyboard help to the end on touch */
+/* ======================================================
+   PORTRAIT / NARROW: HUD goes below the canvas in a row
+   ====================================================== */
+@media (orientation: portrait), (max-width: 760px){
+  .board{
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .hud{
+    flex-direction:row;
+    flex-wrap:nowrap;
+    overflow-x:auto; overflow-y:hidden;
+    max-height:22vh;
+    padding-bottom:4px;
+  }
+  .hud::-webkit-scrollbar{height:8px;width:auto}
+  .card{flex:0 0 auto;min-width:140px}
+  .next-card{min-width:130px}
+  .honours-card{min-width:200px}
+  .combo-card,.help-card{min-width:180px}
+  .game-wrap{height:auto;width:auto;max-height:100%;max-width:100%}
 }
-/* Tighter spacing on touch devices so the bowl + score fit on one screen */
+
+/* Tighter card padding on touch */
 @media (pointer:coarse){
-  .hall{padding:10px 12px 18px}
-  .title-banner{padding:8px 14px;margin-bottom:10px}
-  .title-banner span{font-size:34px}
-  .title-banner small{font-size:16px}
-  .board{gap:12px}
-  .card{padding:8px 10px}
-  .help-card{display:none}  /* keyboard help is irrelevant on touch */
+  .card{padding:6px 10px}
+  .help-card{display:none}      /* keyboard help is irrelevant on touch */
+}
+
+/* Very small screens — shrink banner */
+@media (max-height: 600px){
+  .title-banner{padding:4px 16px}
+  .title-banner span{font-size:22px}
+  .title-banner small{font-size:13px}
 }

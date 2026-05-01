@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#7a1f2b" />
-  <title>The Haileybury Dining Hall — A Suika-Style Feast</title>
+  <title>The Haileybury Dining Hall</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet" />
@@ -16,21 +16,31 @@
   <main class="hall">
     <header class="title-banner">
       <span>The Haileybury Dining Hall</span>
-      <small>a Suika-style feast &mdash; Sursum Corda!</small>
+      <small>Sursum Corda &mdash; lift up your plates!</small>
     </header>
 
     <section class="board">
       <div class="game-wrap">
-        <canvas id="game" width="900" height="1000" tabindex="0" aria-label="Haileybury Suika Game"></canvas>
+        <canvas id="game" width="900" height="1000" tabindex="0" aria-label="Haileybury Dining Hall game"></canvas>
         <div id="overlay" class="overlay hidden">
           <div class="panel">
             <h1 id="ovTitle">Pull up a chair</h1>
             <p id="ovBody">Drop the food into the bowl. Match two of the same to make it grow into the next dish.<br/>Make it all the way to the legendary <b>Haileybury Trifle</b>.</p>
+
+            <div id="ovScoreBox" class="score-box hidden">
+              <p>Final score: <b id="ovFinalScore">0</b></p>
+              <label class="name-label">Your name for the Honours Board:
+                <input id="ovName" type="text" maxlength="14" autocomplete="off" autocapitalize="words" />
+              </label>
+            </div>
+
+            <ol id="ovBoard" class="board-list hidden"></ol>
+
             <div class="btn-row">
               <button id="ovBtn">Start Dinner</button>
               <button id="ovPhotoBtn" class="btn-secondary hidden">&#128247; Save dinner photo</button>
             </div>
-            <p class="hint"><small>Tip: arrow keys / A &amp; D to slide &middot; Space or &darr; to drop &middot; P pause &middot; R restart</small></p>
+            <p class="hint"><small id="ovHint">Tip: arrow keys / A &amp; D to slide &middot; Space or &darr; to drop &middot; P pause &middot; R restart</small></p>
           </div>
         </div>
       </div>
@@ -39,12 +49,19 @@
         <div class="card score-card">
           <h2>Score</h2>
           <p id="score">0</p>
-          <small>Best: <span id="best">0</span></small>
+          <small>Personal best: <span id="best">0</span></small>
         </div>
         <div class="card next-card">
           <h2>Next on the Menu</h2>
           <canvas id="next" width="160" height="160"></canvas>
           <small id="next-name">&hellip;</small>
+        </div>
+        <div class="card honours-card">
+          <h2>Honours Board</h2>
+          <ol id="honours" class="honours-list">
+            <li class="empty">No scores yet. Be the first to make the board!</li>
+          </ol>
+          <button id="resetBoard" class="ghost-btn" type="button">Reset board</button>
         </div>
         <div class="card combo-card">
           <h2>Menu (smallest &rarr; greatest)</h2>
@@ -62,10 +79,6 @@
         </div>
       </aside>
     </section>
-
-    <footer class="foot">
-      <small>A loving send-up of Haileybury, Hertford. No fruits were harmed in the making of this feast.</small>
-    </footer>
   </main>
 
   <script src="./vendor/matter.min.js"></script>

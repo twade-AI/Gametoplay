@@ -1,5 +1,5 @@
 /* ============================================================
- * The Haileybury Dining Hall — A Suika-style Feast
+ * The Haileybury Dining Hall
  * ----------------------------------------------------------
  * 11 hand-drawn dishes that merge upward, set in the school
  * dining hall in Hertford. Sursum Corda — lift up your plates!
@@ -14,10 +14,10 @@
   const W = canvas.width;   // 900
   const H = canvas.height;  // 1000
 
-  // Play-field geometry (the bowl). Tighter than a full Suika field —
-  // about ~3 trifle-widths across — so stacking matters.
-  const PLAY_LEFT   = 232;
-  const PLAY_RIGHT  = 668;
+  // Play-field geometry (the bowl). Sized so two of every tier except the
+  // final Trifle just fit across — tight, but no tier is impossible.
+  const PLAY_LEFT   = 200;
+  const PLAY_RIGHT  = 700;
   const PLAY_TOP    = 240;
   const PLAY_BOTTOM = 928;
   const DANGER_Y    = 298;
@@ -92,15 +92,9 @@
     }
   }
 
-  function shadowBlob(ctx, r) {
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(2, r * 0.92, r * 0.95, r * 0.18, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+  // Note: previously each food sprite had a faint shadow blob, but it caused
+  // visible gaps between stacked foods. Removed so foods sit flush.
+
 
   // ============================================================
   // FOODS — 11 tiers, smallest to largest
@@ -109,7 +103,7 @@
   const FOODS = [
     { // 0
       name: 'Garden Pea',
-      radius: 18, color: '#7fb83a',
+      radius: 16, color: "#7fb83a",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx, 2.2);
         wobblyCircle(ctx, 0, 0, r, seed);
@@ -121,7 +115,7 @@
     },
     { // 1
       name: 'Baked Bean',
-      radius: 24, color: '#d2632b',
+      radius: 26, color: "#d2632b",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         ctx.beginPath();
@@ -138,7 +132,7 @@
     },
     { // 2
       name: 'Crusty Crouton',
-      radius: 32, color: '#e7b864',
+      radius: 38, color: "#e7b864",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         // soft pillow / pebble — generous corner radius keeps it round on contact
@@ -162,7 +156,7 @@
     },
     { // 3
       name: 'Fish Finger',
-      radius: 42, color: '#d8a44b',
+      radius: 52, color: "#d8a44b",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         // proper pill shape — full semi-circle ends, sits inside the physics circle
@@ -186,7 +180,7 @@
     },
     { // 4
       name: 'Cocktail Sausage',
-      radius: 54, color: '#c97e64',
+      radius: 66, color: "#c97e64",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         // chubby pill — fits inside the physics circle
@@ -210,7 +204,7 @@
     },
     { // 5
       name: 'Yorkshire Pudding',
-      radius: 68, color: '#dba85d',
+      radius: 80, color: "#dba85d",
       draw(ctx, r, seed) {
         // outer rim
         ctx.fillStyle = '#c0823f'; inkOutline(ctx);
@@ -233,7 +227,7 @@
     },
     { // 6
       name: 'Jacket Potato',
-      radius: 84, color: '#a26a32',
+      radius: 92, color: "#a26a32",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         const rng = mulberry(seed);
@@ -264,7 +258,7 @@
     },
     { // 7
       name: 'Sunday Roast Chicken',
-      radius: 104, color: '#d6a25b',
+      radius: 102, color: "#d6a25b",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         ctx.beginPath();
@@ -306,7 +300,7 @@
     },
     { // 8
       name: 'Sticky Toffee Pudding',
-      radius: 124, color: '#5a2f15',
+      radius: 110, color: "#5a2f15",
       draw(ctx, r, seed) {
         // base
         ctx.fillStyle = this.color; inkOutline(ctx);
@@ -340,7 +334,7 @@
     },
     { // 9
       name: 'Flaming Christmas Pudding',
-      radius: 148, color: '#3a1e0c',
+      radius: 116, color: "#3a1e0c",
       draw(ctx, r, seed) {
         // FLAMES first (behind), drawn ABOVE the pudding visually
         const grad = ctx.createRadialGradient(0, -r * 1.0, 0, 0, -r * 0.7, r * 1.0);
@@ -397,7 +391,7 @@
     },
     { // 10  THE TRIFLE
       name: 'The Haileybury Trifle',
-      radius: 175, color: '#fff7e0',
+      radius: 122, color: "#fff7e0",
       draw(ctx, r, seed) {
         // glass bowl
         ctx.fillStyle = 'rgba(255,255,255,.55)'; inkOutline(ctx, 3);
@@ -585,7 +579,6 @@
     c.width = sz; c.height = sz;
     const cx = c.getContext('2d');
     cx.translate(sz / 2, sz / 2);
-    shadowBlob(cx, food.radius);
     food.draw(cx, food.radius, 9171 + i * 137);
     return c;
   });
@@ -1152,18 +1145,21 @@
   function spawnAt(tier, x, y, opts = {}) {
     const f = FOODS[tier];
     const body = Bodies.circle(x, y, f.radius, {
-      restitution: 0.06,           // less springy
-      friction: 0.55,              // more grip
+      // Higher restitution so a freshly-dropped dish bounces around in the
+      // bowl. High friction + air drag still kill it within a couple seconds
+      // so the pile settles cleanly.
+      restitution: 0.32,
+      friction: 0.55,
       frictionStatic: 0.9,
-      frictionAir: 0.0009,
-      slop: 0.02,                  // tighter contacts
+      frictionAir: 0.0008,
+      slop: 0.02,
       density: 0.0012 + tier * 0.00022,
       label: 'food',
       ...opts,
     });
     body.tier = tier;
     body.spawnedAt = performance.now();
-    body.squash = 0;               // visual squish on contact, decays each frame
+    body.squash = 0;
     items.add(body);
     World.add(world, body);
     return body;
@@ -1443,7 +1439,85 @@
   };
   let score = 0;
   let highestTier = -1;
-  let best = Number(localStorage.getItem('haileybury-suika-best') || 0);
+  let best = Number(localStorage.getItem('haileybury-dining-best') || 0);
+
+  // ---- Honours Board (leaderboard) ---------------------------------------
+  const BOARD_KEY = 'haileybury-dining-board';
+  const BOARD_NAME_KEY = 'haileybury-dining-name';
+  const BOARD_LIMIT = 10;
+  let leaderboard = loadBoard();
+  function loadBoard() {
+    try {
+      const raw = localStorage.getItem(BOARD_KEY);
+      if (!raw) return [];
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(r => r && typeof r.name === 'string' && Number.isFinite(r.score));
+    } catch { return []; }
+  }
+  function saveBoard() {
+    try { localStorage.setItem(BOARD_KEY, JSON.stringify(leaderboard)); } catch {}
+  }
+  function recordScore(name, scoreVal) {
+    const cleanName = (name || 'Anon').trim().slice(0, 14) || 'Anon';
+    const entry = { name: cleanName, score: Math.floor(scoreVal), date: new Date().toISOString().slice(0, 10) };
+    leaderboard.push(entry);
+    leaderboard.sort((a, b) => b.score - a.score);
+    leaderboard = leaderboard.slice(0, BOARD_LIMIT);
+    saveBoard();
+    try { localStorage.setItem(BOARD_NAME_KEY, cleanName); } catch {}
+    renderHonours();
+    return entry;
+  }
+  function lastUsedName() {
+    try { return localStorage.getItem(BOARD_NAME_KEY) || ''; } catch { return ''; }
+  }
+  function clearBoard() {
+    if (!confirm('Reset the Honours Board? This cannot be undone.')) return;
+    leaderboard = [];
+    saveBoard();
+    renderHonours();
+  }
+
+  function renderHonours(highlightEntry) {
+    const ol = document.getElementById('honours');
+    ol.innerHTML = '';
+    if (leaderboard.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'No scores yet. Be the first to make the board!';
+      ol.appendChild(li);
+      return;
+    }
+    leaderboard.slice(0, 5).forEach((r) => {
+      const li = document.createElement('li');
+      const n = document.createElement('span'); n.className = 'name'; n.textContent = r.name;
+      const s = document.createElement('span'); s.className = 'score'; s.textContent = r.score.toLocaleString();
+      li.appendChild(n); li.appendChild(s);
+      if (highlightEntry && r === highlightEntry) li.classList.add('you');
+      ol.appendChild(li);
+    });
+  }
+  function renderOverlayBoard(highlightEntry) {
+    const ol = document.getElementById('ovBoard');
+    ol.innerHTML = '';
+    if (leaderboard.length === 0) {
+      ol.classList.add('hidden');
+      return;
+    }
+    leaderboard.forEach((r) => {
+      const li = document.createElement('li');
+      const n = document.createElement('span'); n.className = 'name'; n.textContent = r.name;
+      const s = document.createElement('span'); s.className = 'score'; s.textContent = r.score.toLocaleString();
+      li.appendChild(n); li.appendChild(s);
+      if (highlightEntry && r === highlightEntry) li.classList.add('you');
+      ol.appendChild(li);
+    });
+    ol.classList.remove('hidden');
+  }
+  // Initial render so the HUD card shows the board on page load
+  renderHonours();
+  document.getElementById('resetBoard').addEventListener('click', clearBoard);
 
   // ---- Combo system (chained merges within COMBO_WINDOW ms) --------------
   const COMBO_WINDOW = 1700;
@@ -1583,7 +1657,7 @@
     if (s < 1 / 90) return APPLE_TIER;   // ~1 in 90 drops
     if (s < 1 / 90 + 1 / 110) return BOMB_TIER; // ~1 in 110 drops
 
-    // bias toward smaller tiers, classic Suika
+    // bias toward smaller tiers
     const r = Math.random();
     if (r < 0.45) return 0;
     if (r < 0.78) return 1;
@@ -1600,12 +1674,16 @@
     updateMenuHighlight();
     nextTier = randomNextTier();
     queuedTier = randomNextTier();
+    drawNextPreview();
     ladleX = (PLAY_LEFT + PLAY_RIGHT) / 2;
     paused = false;
     gameOver = false;
     dangerStart = 0;
     started = true;
+    comboMultiplier = 1;
+    lastMergeAt = 0;
     flashText = null;
+    gameOverPhase = null;
     hideOverlay();
     canvas.focus();
   }
@@ -1653,7 +1731,9 @@
     const r = FOODS[nextTier].radius;
     const x = clamp(ladleX, PLAY_LEFT + r + 4, PLAY_RIGHT - r - 4);
     const b = spawnAt(nextTier, x, LADLE_Y + r + 10);
-    Body.setVelocity(b, { x: 0, y: 2 });
+    // Push it down a bit harder so it hits the bowl (or the pile) with some
+    // gusto and does a livelier bounce on entry.
+    Body.setVelocity(b, { x: (Math.random() - 0.5) * 0.6, y: 4 });
     nextTier = queuedTier;
     queuedTier = randomNextTier();
     drawNextPreview();
@@ -1747,23 +1827,64 @@
   }
   drawNextPreview();
 
-  function showOverlay(title, body, btn = 'Resume', { showPhoto = false } = {}) {
+  function showOverlay(title, body, btn = 'Resume', opts = {}) {
+    const { showPhoto = false, showScoreBox = false, showBoard = false, highlightEntry = null } = opts;
     const ov = document.getElementById('overlay');
     document.getElementById('ovTitle').textContent = title;
     document.getElementById('ovBody').innerHTML = body;
     const button = document.getElementById('ovBtn');
     button.textContent = btn;
     document.getElementById('ovPhotoBtn').classList.toggle('hidden', !showPhoto);
+    const scoreBox = document.getElementById('ovScoreBox');
+    scoreBox.classList.toggle('hidden', !showScoreBox);
+    if (showScoreBox) {
+      document.getElementById('ovFinalScore').textContent = String(Math.floor(score));
+      const nameInput = document.getElementById('ovName');
+      nameInput.value = lastUsedName();
+      // Briefly defer focus so on-screen keyboards on iPad pop up cleanly
+      setTimeout(() => nameInput.focus(), 80);
+    }
+    if (showBoard) renderOverlayBoard(highlightEntry);
+    else document.getElementById('ovBoard').classList.add('hidden');
     ov.classList.remove('hidden');
   }
   function hideOverlay() {
     document.getElementById('overlay').classList.add('hidden');
   }
+
+  // Game-over has two phases: enter-name, then leaderboard view.
+  let gameOverPhase = null;        // null | 'enter-name' | 'board'
+  let lastEntry = null;
+
   document.getElementById('ovBtn').addEventListener('click', () => {
+    if (gameOverPhase === 'enter-name') {
+      // Save the score, then show the leaderboard view
+      const nameInput = document.getElementById('ovName');
+      lastEntry = recordScore(nameInput.value, score);
+      gameOverPhase = 'board';
+      const placement = leaderboard.indexOf(lastEntry) + 1;
+      const placeText = placement > 0
+        ? `You finished <b>#${placement}</b> on the Honours Board!`
+        : 'A noble effort.';
+      showOverlay(
+        'The Honours Board',
+        `${placeText}<br/><br/>Final score: <b>${lastEntry.score.toLocaleString()}</b>`,
+        'Serve again',
+        { showPhoto: true, showBoard: true, highlightEntry: lastEntry },
+      );
+      return;
+    }
     if (!started || gameOver) reset();
     else { paused = false; hideOverlay(); canvas.focus(); }
   });
   document.getElementById('ovPhotoBtn').addEventListener('click', exportPhoto);
+  // Pressing Enter in the name field acts like clicking the button
+  document.getElementById('ovName').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('ovBtn').click();
+    }
+  });
 
   // ---- Photo export — render the bowl + a hand-drawn caption to PNG -------
   function exportPhoto() {
@@ -1816,14 +1937,18 @@
         gameOver = true;
         if (score > best) {
           best = score;
-          localStorage.setItem('haileybury-suika-best', String(best));
+          localStorage.setItem('haileybury-dining-best', String(best));
         }
         playGameOver();
+        gameOverPhase = 'enter-name';
+        const isBest = score >= (leaderboard[0]?.score || 0) && score > 0;
+        const beatPersonal = score > best;
+        const head = isBest ? 'A new High Score!' : (beatPersonal ? 'A personal best!' : 'The bowl runneth over!');
         showOverlay(
-          'The bowl runneth over!',
-          `You scored <b>${Math.floor(score)}</b> points.<br/>Best: <b>${Math.floor(best)}</b>.<br/><br/>Press <b>R</b>, <b>Enter</b>, or the button to start a new dinner.`,
-          'Serve again',
-          { showPhoto: true },
+          head,
+          `Add your name to the <b>Honours Board</b> to record your score.`,
+          'Submit score',
+          { showScoreBox: true },
         );
       }
     } else {
@@ -2064,6 +2189,7 @@
   showOverlay(
     'The Haileybury Dining Hall',
     `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, fish fingers, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
-    'Start Dinner'
+    'Start Dinner',
+    { showBoard: leaderboard.length > 0 },
   );
 })();
