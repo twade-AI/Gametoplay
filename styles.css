@@ -121,14 +121,17 @@ kbd{
 .overlay h1{font-size:54px;color:var(--maroon);margin:0 0 6px;line-height:1}
 .overlay p{font-size:22px;margin:6px 0}
 .overlay .hint{font-family:'Patrick Hand',cursive;color:#5a432a;margin-top:8px}
+.overlay .btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .overlay button{
   font-family:'Caveat',cursive;
-  font-size:30px;
+  font-size:28px;
   background:var(--maroon);color:var(--gold);
-  border:none;border-radius:10px;padding:8px 28px;margin-top:10px;
+  border:none;border-radius:10px;padding:8px 22px;
   cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.25);
   transition:transform .08s ease;
 }
+.overlay button.btn-secondary{background:#c8a44a;color:#3a1e0c}
+.overlay button.hidden{display:none}
 .overlay button:hover{transform:translateY(-2px)}
 .overlay button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
 
