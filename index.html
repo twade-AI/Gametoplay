@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Haileybury Dining Hall — A Suika-Style Feast</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="hall">
+    <header class="title-banner">
+      <span>The Haileybury Dining Hall</span>
+      <small>a Suika-style feast &mdash; Sursum Corda!</small>
+    </header>
+
+    <section class="board">
+      <div class="game-wrap">
+        <canvas id="game" width="900" height="1000" tabindex="0" aria-label="Haileybury Suika Game"></canvas>
+        <div id="overlay" class="overlay hidden">
+          <div class="panel">
+            <h1 id="ovTitle">Pull up a chair</h1>
+            <p id="ovBody">Drop the food into the bowl. Match two of the same to make it grow into the next dish.<br/>Make it all the way to the legendary <b>Haileybury Trifle</b>.</p>
+            <button id="ovBtn">Start Dinner</button>
+            <p class="hint"><small>Tip: arrow keys / A &amp; D to slide &middot; Space or &darr; to drop &middot; P pause &middot; R restart</small></p>
+          </div>
+        </div>
+      </div>
+
+      <aside class="hud">
+        <div class="card score-card">
+          <h2>Score</h2>
+          <p id="score">0</p>
+          <small>Best: <span id="best">0</span></small>
+        </div>
+        <div class="card next-card">
+          <h2>Next on the Menu</h2>
+          <canvas id="next" width="160" height="160"></canvas>
+          <small id="next-name">&hellip;</small>
+        </div>
+        <div class="card combo-card">
+          <h2>Menu (smallest &rarr; greatest)</h2>
+          <ol id="menu"></ol>
+        </div>
+        <div class="card help-card">
+          <h2>Controls</h2>
+          <ul>
+            <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> or <kbd>A</kbd>/<kbd>D</kbd> &mdash; slide ladle</li>
+            <li><kbd>Space</kbd> or <kbd>&darr;</kbd> &mdash; drop the dish</li>
+            <li><kbd>P</kbd> &mdash; pause</li>
+            <li><kbd>R</kbd> &mdash; restart dinner</li>
+            <li><kbd>M</kbd> &mdash; mute / un-mute</li>
+          </ul>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="foot">
+      <small>A loving send-up of Haileybury, Hertford. No fruits were harmed in the making of this feast.</small>
+    </footer>
+  </main>
+
+  <script src="./vendor/matter.min.js"></script>
+  <script src="./game.js"></script>
+</body>
+</html>
