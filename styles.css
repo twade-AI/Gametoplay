@@ -1,0 +1,135 @@
+:root{
+  --paper:#f3e7c9;
+  --paper-dark:#e6d5ad;
+  --ink:#2a1a0e;
+  --maroon:#7a1f2b;     /* Haileybury maroon */
+  --gold:#c8a44a;
+  --sage:#6c7a4a;
+  --chalk:#f6f3e7;
+  --slate:#2b3340;
+  --shadow: 0 14px 40px rgba(50,30,10,.35);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:'Patrick Hand',cursive;
+  color:var(--ink);
+  background:
+    radial-gradient(ellipse at top,#fff7e2 0%,transparent 60%),
+    repeating-linear-gradient(135deg, rgba(120,80,30,.05) 0 2px, transparent 2px 6px),
+    linear-gradient(#f6e9c8,#e9d6a4);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+.hall{max-width:1280px;margin:0 auto;padding:18px 24px 36px}
+
+/* ---- Banner ---- */
+.title-banner{
+  text-align:center;
+  font-family:'Caveat',cursive;
+  background:
+    repeating-linear-gradient(45deg, rgba(0,0,0,.07) 0 6px, transparent 6px 12px),
+    var(--maroon);
+  color:var(--gold);
+  border-radius:14px;
+  padding:14px 24px 10px;
+  margin-bottom:18px;
+  box-shadow: 0 8px 0 rgba(0,0,0,.18), inset 0 0 0 4px rgba(200,164,74,.4);
+  transform:rotate(-.4deg);
+  position:relative;
+}
+.title-banner::before, .title-banner::after{
+  content:"";position:absolute;top:50%;width:30px;height:30px;border-radius:50%;
+  background:var(--gold); transform:translateY(-50%);
+  box-shadow: inset 0 0 0 3px var(--maroon);
+}
+.title-banner::before{left:10px}
+.title-banner::after{right:10px}
+.title-banner span{font-size:54px;font-weight:700;letter-spacing:1px;display:block;line-height:1}
+.title-banner small{display:block;font-size:22px;color:#f4e0a8;margin-top:4px;font-family:'Patrick Hand',cursive}
+
+/* ---- Board layout ---- */
+.board{display:grid;grid-template-columns:1fr 320px;gap:24px;align-items:start}
+.game-wrap{position:relative}
+canvas#game{
+  width:100%;
+  max-width:900px;
+  height:auto;
+  background:transparent;
+  border-radius:16px;
+  box-shadow:var(--shadow);
+  display:block;
+  outline:none;
+}
+
+/* ---- HUD cards ---- */
+.hud{display:flex;flex-direction:column;gap:14px}
+.card{
+  background:var(--paper);
+  border:2px dashed var(--ink);
+  border-radius:14px;
+  padding:12px 14px;
+  box-shadow:3px 3px 0 rgba(0,0,0,.15);
+  position:relative;
+}
+.card:nth-child(odd){transform:rotate(-.6deg)}
+.card:nth-child(even){transform:rotate(.5deg)}
+.card h2{margin:0 0 6px;font-family:'Caveat',cursive;font-size:28px;color:var(--maroon);line-height:1}
+.score-card p{font-family:'Special Elite',monospace;font-size:46px;margin:0;color:var(--ink);line-height:1}
+.score-card small{color:#5a432a}
+.next-card{display:flex;flex-direction:column;align-items:center;text-align:center}
+.next-card canvas{
+  width:140px;height:140px;
+  background:radial-gradient(circle,#fff8dd 0%,transparent 72%);
+  border-radius:12px;
+}
+.next-card small{font-size:18px;margin-top:4px;font-style:italic}
+.combo-card ol{margin:0;padding-left:22px;font-size:16px;line-height:1.45}
+.combo-card li{margin-bottom:1px}
+.combo-card li.cur{color:var(--maroon);font-weight:700;text-decoration:underline wavy var(--gold)}
+.help-card ul{margin:0;padding-left:18px;font-size:16px;line-height:1.45}
+kbd{
+  background:#fff7df;border:1.5px solid var(--ink);border-bottom-width:3px;
+  border-radius:5px;padding:0 5px;font-family:'Special Elite',monospace;font-size:13px;
+}
+.foot{margin-top:18px;text-align:center;color:#6a4d2a}
+
+/* ---- Overlay ---- */
+.overlay{
+  position:absolute;inset:0;background:rgba(20,10,0,.55);
+  display:flex;align-items:center;justify-content:center;z-index:10;
+  border-radius:16px;
+}
+.overlay.hidden{display:none}
+.overlay .panel{
+  background:var(--paper);
+  border:3px dashed var(--ink);
+  border-radius:18px;
+  padding:24px 36px 28px;
+  text-align:center;
+  font-family:'Caveat',cursive;
+  transform:rotate(-1deg);
+  max-width:560px;
+  box-shadow:var(--shadow);
+}
+.overlay h1{font-size:54px;color:var(--maroon);margin:0 0 6px;line-height:1}
+.overlay p{font-size:22px;margin:6px 0}
+.overlay .hint{font-family:'Patrick Hand',cursive;color:#5a432a;margin-top:8px}
+.overlay button{
+  font-family:'Caveat',cursive;
+  font-size:30px;
+  background:var(--maroon);color:var(--gold);
+  border:none;border-radius:10px;padding:8px 28px;margin-top:10px;
+  cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.25);
+  transition:transform .08s ease;
+}
+.overlay button:hover{transform:translateY(-2px)}
+.overlay button:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.25)}
+
+@media (max-width:980px){
+  .board{grid-template-columns:1fr}
+  .hud{flex-direction:row;flex-wrap:wrap}
+  .card{flex:1 1 200px}
+  .title-banner span{font-size:38px}
+  .title-banner small{font-size:18px}
+}
