@@ -1192,22 +1192,49 @@
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  // Mouse / touch as a bonus: position ladle under pointer, click to drop
+  // ----- Mouse: hover to aim, click to drop --------------------------------
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (W / rect.width);
     ladleX = clamp(x, PLAY_LEFT + 30, PLAY_RIGHT - 30);
   });
-  canvas.addEventListener('mousedown', () => { if (started && !paused && !gameOver) drop(); });
-  canvas.addEventListener('touchstart', (e) => {
-    if (e.touches[0]) {
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.touches[0].clientX - rect.left) * (W / rect.width);
-      ladleX = clamp(x, PLAY_LEFT + 30, PLAY_RIGHT - 30);
-    }
+  canvas.addEventListener('mousedown', () => {
     if (started && !paused && !gameOver) drop();
+  });
+
+  // ----- Touch (iPad / phone): drag to aim, lift to drop -------------------
+  // - touchstart  : begin a drag, snap ladle to the touch x
+  // - touchmove   : slide the ladle with the finger (no scrolling)
+  // - touchend    : release → drop the dish
+  // The page is prevented from scrolling/zooming while a finger is on the
+  // canvas (canvas has `touch-action: none`).
+  let touchActive = false;
+  function touchToCanvasX(t) {
+    const rect = canvas.getBoundingClientRect();
+    return (t.clientX - rect.left) * (W / rect.width);
+  }
+  canvas.addEventListener('touchstart', (e) => {
+    if (!started || paused || gameOver) return; // let the overlay button handle taps
+    if (!e.touches[0]) return;
     e.preventDefault();
+    // Resume audio context — iOS requires a user gesture
+    const a = ac(); if (a && a.state === 'suspended') a.resume();
+    touchActive = true;
+    ladleX = clamp(touchToCanvasX(e.touches[0]), PLAY_LEFT + 30, PLAY_RIGHT - 30);
   }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!touchActive || !e.touches[0]) return;
+    e.preventDefault();
+    ladleX = clamp(touchToCanvasX(e.touches[0]), PLAY_LEFT + 30, PLAY_RIGHT - 30);
+  }, { passive: false });
+  const releaseTouch = (e) => {
+    if (!touchActive) return;
+    e?.preventDefault?.();
+    touchActive = false;
+    if (started && !paused && !gameOver) drop();
+  };
+  canvas.addEventListener('touchend', releaseTouch, { passive: false });
+  canvas.addEventListener('touchcancel', () => { touchActive = false; });
 
   // ============================================================
   // UI: menu list, next preview, overlay
@@ -1424,10 +1451,14 @@
   }
   requestAnimationFrame(frame);
 
-  // intro overlay
+  // intro overlay — adapts to touch vs keyboard
+  const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+  const controlsHint = isTouch
+    ? '<b>Drag</b> across the bowl to aim, then <b>lift your finger</b> to drop the dish.'
+    : 'Use <b>← / →</b> (or <b>A / D</b>) to slide the ladle, then <b>Space</b> or <b>↓</b> to drop.';
   showOverlay(
     'The Haileybury Dining Hall',
-    'Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, fish fingers, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/><i>Sursum Corda — lift up your plates!</i>',
+    `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, fish fingers, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
     'Start Dinner'
   );
 })();

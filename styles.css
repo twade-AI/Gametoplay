@@ -60,6 +60,12 @@ canvas#game{
   box-shadow:var(--shadow);
   display:block;
   outline:none;
+  /* iPad / touch: stop the page panning, zooming, or selecting while playing */
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
 }
 
 /* ---- HUD cards ---- */
@@ -132,4 +138,15 @@ kbd{
   .card{flex:1 1 200px}
   .title-banner span{font-size:38px}
   .title-banner small{font-size:18px}
+  .help-card{order:99}      /* push keyboard help to the end on touch */
+}
+/* Tighter spacing on touch devices so the bowl + score fit on one screen */
+@media (pointer:coarse){
+  .hall{padding:10px 12px 18px}
+  .title-banner{padding:8px 14px;margin-bottom:10px}
+  .title-banner span{font-size:34px}
+  .title-banner small{font-size:16px}
+  .board{gap:12px}
+  .card{padding:8px 10px}
+  .help-card{display:none}  /* keyboard help is irrelevant on touch */
 }
