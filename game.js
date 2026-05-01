@@ -14,6 +14,64 @@
   const W = canvas.width;   // 900
   const H = canvas.height;  // 1000
 
+  // ============================================================
+  // FIT-TO-VIEWPORT — the canvas always shows the entire bowl,
+  // landscape or portrait, on any device.
+  // ============================================================
+  function fitCanvas() {
+    const wrap = document.querySelector('.game-wrap');
+    const board = document.querySelector('.board');
+    if (!wrap || !board) return;
+    // Read the area available to the board (after the title banner).
+    const cs = getComputedStyle(board);
+    const gap = parseFloat(cs.gap) || 8;
+    // Find the column / row layout from the actual computed grid.
+    const cols = cs.gridTemplateColumns.split(' ').filter(Boolean).length;
+    const portrait = cols <= 1;
+    const boardRect = board.getBoundingClientRect();
+    let availW, availH;
+    if (portrait) {
+      // canvas on top, HUD strip below
+      const hud = board.querySelector('.hud');
+      const hudH = hud ? hud.getBoundingClientRect().height : 0;
+      availW = boardRect.width;
+      availH = Math.max(80, boardRect.height - hudH - gap);
+    } else {
+      // canvas on the left, HUD column on the right
+      const hud = board.querySelector('.hud');
+      const hudW = hud ? hud.getBoundingClientRect().width : 0;
+      availW = Math.max(80, boardRect.width - hudW - gap);
+      availH = boardRect.height;
+    }
+    // 9:10 aspect — pick the largest box that fits in (availW, availH)
+    const heightFromW = availW * (10 / 9);
+    let w, h;
+    if (heightFromW <= availH) { w = availW; h = heightFromW; }
+    else { h = availH; w = availH * (9 / 10); }
+    wrap.style.width = w + 'px';
+    wrap.style.height = h + 'px';
+  }
+  // Run once now and again whenever layout changes.
+  let _fitTimer = 0;
+  function scheduleFit() {
+    cancelAnimationFrame(_fitTimer);
+    _fitTimer = requestAnimationFrame(fitCanvas);
+  }
+  // Call immediately, again after fonts load (banner reflow), and on every
+  // resize / orientation change.
+  scheduleFit();
+  window.addEventListener('load', scheduleFit);
+  window.addEventListener('resize', scheduleFit);
+  window.addEventListener('orientationchange', () => setTimeout(scheduleFit, 120));
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleFit).catch(() => {});
+  }
+  // The HUD's content height also changes when score/best update — observe it
+  if (typeof ResizeObserver !== 'undefined') {
+    const ro = new ResizeObserver(scheduleFit);
+    ro.observe(document.body);
+  }
+
   // Play-field geometry (the bowl). Sized so two of every tier except the
   // final Trifle just fit across — tight, but no tier is impossible.
   const PLAY_LEFT   = 200;
