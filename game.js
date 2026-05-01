@@ -842,7 +842,15 @@
       [16, 360], [16, 545], [16, 730],
       [W - 124, 360], [W - 124, 545], [W - 124, 730],
     ];
-    const portraitNames = ['F.M. 1862', 'A.G.B. 1875', 'C.A.E. 1899', 'L.M. 1923', 'D.S. 1956', 'Mr Wade · 2026'];
+    // Real Masters of Haileybury — five from history, plus Mr Wade in slot 6.
+    const portraitNames = [
+      "Sholto Black '42",        // top-left      (Sholto Black, 1942-1953)
+      "Bill Stewart '62",        // middle-left   (William 'Bill' Stewart, 1962-1975)
+      "D. Summerscale '76",      // bottom-left   (David Summerscale, 1976-1986)
+      "Stuart Westley '99",      // top-right     (Stuart Westley, 1999-2009)
+      "Martin Collier '17",      // middle-right  (Martin Collier, 2017-2024)
+      'Mr Wade · 2026',          // bottom-right  (the only one painted from life)
+    ];
     portraits.forEach(([px, py], idx) => {
       // outer gilded frame
       c.fillStyle = '#d4ad58';
@@ -1001,16 +1009,23 @@
 
       // outer frame outline
       inkOutline(c, 2); c.strokeRect(px, py, 108, 150);
-      // brass nameplate
+      // brass nameplate — wider so the real Masters' names fit
+      const npX = px + 6, npY = py + 152, npW = 96, npH = 14;
       c.fillStyle = '#c8a44a';
-      c.fillRect(px + 16, py + 152, 76, 14);
-      c.strokeRect(px + 16, py + 152, 76, 14);
+      c.fillRect(npX, npY, npW, npH);
+      c.strokeRect(npX, npY, npW, npH);
       c.fillStyle = '#2a1a0e';
-      c.font = idx === 5
-        ? "bold 11px 'Caveat', cursive"
-        : "bold 9px 'Special Elite', monospace";
       c.textAlign = 'center'; c.textBaseline = 'middle';
-      c.fillText(portraitNames[idx], px + 54, py + 159);
+      // shrink the font automatically until the name fits
+      let fontSize = idx === 5 ? 12 : 10;
+      do {
+        c.font = idx === 5
+          ? `bold ${fontSize}px 'Caveat', cursive`
+          : `bold ${fontSize}px 'Special Elite', monospace`;
+        if (c.measureText(portraitNames[idx]).width <= npW - 6) break;
+        fontSize -= 1;
+      } while (fontSize > 6);
+      c.fillText(portraitNames[idx], npX + npW / 2, npY + npH / 2 + 1);
     });
 
     // ============================
@@ -1186,15 +1201,36 @@
   const engine = Engine.create();
   engine.world.gravity.y = 1.05;
   // More iterations = less inter-penetration, snappier resting contacts.
-  engine.positionIterations = 10;
-  engine.velocityIterations = 8;
+  engine.positionIterations = 12;
+  engine.velocityIterations = 10;
   engine.constraintIterations = 4;
   const world = engine.world;
 
-  const wallOpts = { isStatic: true, restitution: 0.02, friction: 0.7 };
-  const ground = Bodies.rectangle((PLAY_LEFT + PLAY_RIGHT) / 2, PLAY_BOTTOM + 28, PLAY_RIGHT - PLAY_LEFT + 60, 56, wallOpts);
-  const leftW = Bodies.rectangle(PLAY_LEFT - 14, (PLAY_TOP + PLAY_BOTTOM) / 2, 28, PLAY_BOTTOM - PLAY_TOP + 240, wallOpts);
-  const rightW = Bodies.rectangle(PLAY_RIGHT + 14, (PLAY_TOP + PLAY_BOTTOM) / 2, 28, PLAY_BOTTOM - PLAY_TOP + 240, wallOpts);
+  // Walls: thick, inert, immovable. Zero restitution + high friction so
+  // a stack sits against them instead of squirting out.
+  const WALL_THICK = 80;
+  const wallOpts = { isStatic: true, restitution: 0, friction: 0.9, frictionStatic: 1.2 };
+  const ground = Bodies.rectangle(
+    (PLAY_LEFT + PLAY_RIGHT) / 2,
+    PLAY_BOTTOM + WALL_THICK / 2,
+    (PLAY_RIGHT - PLAY_LEFT) + WALL_THICK * 2,
+    WALL_THICK,
+    wallOpts,
+  );
+  const leftW = Bodies.rectangle(
+    PLAY_LEFT - WALL_THICK / 2,
+    (PLAY_TOP + PLAY_BOTTOM) / 2,
+    WALL_THICK,
+    (PLAY_BOTTOM - PLAY_TOP) + 600,
+    wallOpts,
+  );
+  const rightW = Bodies.rectangle(
+    PLAY_RIGHT + WALL_THICK / 2,
+    (PLAY_TOP + PLAY_BOTTOM) / 2,
+    WALL_THICK,
+    (PLAY_BOTTOM - PLAY_TOP) + 600,
+    wallOpts,
+  );
   World.add(world, [ground, leftW, rightW]);
 
   const items = new Set();
@@ -1221,6 +1257,32 @@
     items.add(body);
     World.add(world, body);
     return body;
+  }
+
+  // Safety net — even with thick walls, fast collisions and bomb impulses
+  // can occasionally squeeze a body past a wall. After every physics step
+  // we sweep the items and force any escapee back inside, killing any
+  // outward velocity. Vertical clamping only kicks in below the floor.
+  function clampInsideBowl() {
+    for (const b of items) {
+      const r = FOODS[b.tier].radius;
+      const minX = PLAY_LEFT + r;
+      const maxX = PLAY_RIGHT - r;
+      let x = b.position.x;
+      let vx = b.velocity.x;
+      let nudged = false;
+      if (x < minX) { x = minX; if (vx < 0) vx = 0; nudged = true; }
+      else if (x > maxX) { x = maxX; if (vx > 0) vx = 0; nudged = true; }
+      // floor
+      const maxY = PLAY_BOTTOM - r;
+      let y = b.position.y;
+      let vy = b.velocity.y;
+      if (y > maxY) { y = maxY; if (vy > 0) vy = 0; nudged = true; }
+      if (nudged) {
+        Body.setPosition(b, { x, y });
+        Body.setVelocity(b, { x: vx, y: vy });
+      }
+    }
   }
 
   function removeBody(b) {
@@ -2204,6 +2266,7 @@
       dropCooldown = Math.max(0, dropCooldown - dt);
 
       Engine.update(engine, dt * 1000);
+      clampInsideBowl();
       updateParticles(dt);
       checkGameOver(dt);
       // combo timeout
