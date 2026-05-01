@@ -14,13 +14,14 @@
   const W = canvas.width;   // 900
   const H = canvas.height;  // 1000
 
-  // Play-field geometry (the bowl)
-  const PLAY_LEFT   = 150;
-  const PLAY_RIGHT  = 750;
-  const PLAY_TOP    = 230;
-  const PLAY_BOTTOM = 940;
-  const DANGER_Y    = 285;
-  const LADLE_Y     = 195;
+  // Play-field geometry (the bowl). Tighter than a full Suika field —
+  // about ~3 trifle-widths across — so stacking matters.
+  const PLAY_LEFT   = 232;
+  const PLAY_RIGHT  = 668;
+  const PLAY_TOP    = 240;
+  const PLAY_BOTTOM = 928;
+  const DANGER_Y    = 298;
+  const LADLE_Y     = 200;
 
   // ----- Tiny seedable RNG (so hand-drawn art is stable) --------------------
   function mulberry(seed) {
@@ -41,12 +42,18 @@
   }
 
   function wobblyCircle(ctx, x, y, r, seed, fill = true, stroke = true) {
+    // Smoother than a true wobble — small low-frequency variation gives a
+    // hand-drawn feel without a noisy outline that reads as "spiky".
     const rng = mulberry(seed);
     ctx.beginPath();
-    const steps = 36 + Math.floor(r / 3);
+    const steps = 48 + Math.floor(r / 3);
+    const phase1 = rng() * Math.PI * 2;
+    const phase2 = rng() * Math.PI * 2;
+    const amp1 = Math.max(0.6, r * 0.018);
+    const amp2 = Math.max(0.4, r * 0.012);
     for (let i = 0; i <= steps; i++) {
       const a = (i / steps) * Math.PI * 2;
-      const j = (rng() - 0.5) * Math.max(0.8, r * 0.045);
+      const j = Math.sin(a * 3 + phase1) * amp1 + Math.sin(a * 5 + phase2) * amp2;
       const px = x + Math.cos(a) * (r + j);
       const py = y + Math.sin(a) * (r + j);
       if (i === 0) ctx.moveTo(px, py);
@@ -55,6 +62,22 @@
     ctx.closePath();
     if (fill) ctx.fill();
     if (stroke) ctx.stroke();
+  }
+
+  // Rounded-pebble shape for "rectangular" foods so that a circle physics
+  // body matches what the eye sees on contact.
+  function roundedRect(ctx, w, h, cr) {
+    ctx.beginPath();
+    ctx.moveTo(-w + cr, -h);
+    ctx.lineTo(w - cr, -h);
+    ctx.quadraticCurveTo(w, -h, w, -h + cr);
+    ctx.lineTo(w, h - cr);
+    ctx.quadraticCurveTo(w, h, w - cr, h);
+    ctx.lineTo(-w + cr, h);
+    ctx.quadraticCurveTo(-w, h, -w, h - cr);
+    ctx.lineTo(-w, -h + cr);
+    ctx.quadraticCurveTo(-w, -h, -w + cr, -h);
+    ctx.closePath();
   }
 
   function speckle(ctx, x, y, r, seed, count, color) {
@@ -118,23 +141,22 @@
       radius: 32, color: '#e7b864',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
-        const rng = mulberry(seed); const s = r * 0.95;
-        const pts = [
-          [-s + rng() * 5, -s + rng() * 5],
-          [ s - rng() * 5, -s + rng() * 5],
-          [ s - rng() * 5,  s - rng() * 5],
-          [-s + rng() * 5,  s - rng() * 5],
-        ];
+        // soft pillow / pebble — generous corner radius keeps it round on contact
+        const w = r * 0.92, h = r * 0.82, cr = r * 0.4;
+        roundedRect(ctx, w, h, cr);
+        ctx.fill(); ctx.stroke();
+        // soft top-left highlight
+        ctx.fillStyle = '#f6dfa3';
         ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.ellipse(-w * 0.25, -h * 0.3, w * 0.55, h * 0.2, -0.2, 0, Math.PI * 2);
+        ctx.fill();
         // crumb texture
-        speckle(ctx, 0, 0, r, seed + 7, 18, '#8a5a1c');
+        speckle(ctx, 0, 0, r * 0.78, seed + 7, 22, '#8a5a1c');
+        const rng = mulberry(seed + 3);
         ctx.fillStyle = '#f3d491';
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 5; i++) {
           const a = rng() * Math.PI * 2; const d = rng() * r * 0.5;
-          ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 2, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(Math.cos(a) * d, Math.sin(a) * d, 2.2, 0, Math.PI * 2); ctx.fill();
         }
       },
     },
@@ -143,24 +165,22 @@
       radius: 42, color: '#d8a44b',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
-        const w = r * 1.2, h = r * 0.78;
-        ctx.beginPath();
-        ctx.moveTo(-w, -h);
-        ctx.quadraticCurveTo(-w - h * 0.5, 0, -w, h);
-        ctx.lineTo(w, h);
-        ctx.quadraticCurveTo(w + h * 0.5, 0, w, -h);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        // breadcrumb dots
+        // proper pill shape — full semi-circle ends, sits inside the physics circle
+        const w = r * 0.92, h = r * 0.7;
+        roundedRect(ctx, w, h, h);   // cr = h → fully rounded ends
+        ctx.fill(); ctx.stroke();
+        // breadcrumb texture
         const rng = mulberry(seed);
         ctx.fillStyle = '#5a3413';
-        for (let i = 0; i < 22; i++) {
+        for (let i = 0; i < 28; i++) {
           ctx.beginPath();
-          ctx.arc(-w + rng() * w * 2, -h + rng() * h * 2, 1.5, 0, Math.PI * 2);
+          ctx.arc(-w + rng() * w * 2, -h + rng() * h * 2, 1.4 + rng() * 0.8, 0, Math.PI * 2);
           ctx.fill();
         }
-        ctx.fillStyle = '#f3d491';
+        // batter highlight
+        ctx.fillStyle = '#f6dfa3';
         ctx.beginPath();
-        ctx.ellipse(-w * 0.3, -h * 0.55, w * 0.5, h * 0.18, 0, 0, Math.PI * 2);
+        ctx.ellipse(-w * 0.25, -h * 0.55, w * 0.55, h * 0.18, 0, 0, Math.PI * 2);
         ctx.fill();
       },
     },
@@ -169,23 +189,22 @@
       radius: 54, color: '#c97e64',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
-        const w = r * 1.15, h = r * 0.62;
-        ctx.beginPath();
-        ctx.moveTo(-w, 0);
-        ctx.bezierCurveTo(-w, -h * 1.7, w, -h * 1.7, w, 0);
-        ctx.bezierCurveTo(w, h * 1.7, -w, h * 1.7, -w, 0);
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        // wrinkles
+        // chubby pill — fits inside the physics circle
+        const w = r * 0.92, h = r * 0.68;
+        roundedRect(ctx, w, h, h);
+        ctx.fill(); ctx.stroke();
+        // wrinkle creases
         ctx.lineWidth = 1.6; ctx.strokeStyle = '#5a2a1b';
         for (let i = -2; i <= 2; i++) {
           ctx.beginPath();
-          ctx.moveTo(i * r * 0.32, -h * 0.55);
-          ctx.quadraticCurveTo(i * r * 0.32 + 3, 0, i * r * 0.32, h * 0.55);
+          ctx.moveTo(i * r * 0.3, -h * 0.62);
+          ctx.quadraticCurveTo(i * r * 0.3 + 2.5, 0, i * r * 0.3, h * 0.62);
           ctx.stroke();
         }
+        // glossy highlight
         ctx.fillStyle = 'rgba(255,220,200,.55)';
         ctx.beginPath();
-        ctx.ellipse(-r * 0.35, -h * 0.85, r * 0.55, h * 0.18, 0, 0, Math.PI * 2);
+        ctx.ellipse(-r * 0.3, -h * 0.7, r * 0.55, h * 0.16, 0, 0, Math.PI * 2);
         ctx.fill();
       },
     },
@@ -476,7 +495,86 @@
         ctx.fillText('HAILEYBURY', 0, r * 0.71);
       },
     },
+
+    // ============================================================
+    // POWER-UPS (don't follow normal merge rules; handled in collisionStart)
+    // ============================================================
+    { // 11 — GOLDEN APPLE: merges with anything to bump it up one tier
+      name: 'Golden Apple',
+      radius: 30, color: '#f1c84f',
+      special: 'apple',
+      draw(ctx, r, seed) {
+        // pulsing golden glow
+        const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 1.6);
+        grad.addColorStop(0, 'rgba(255,230,120,.6)');
+        grad.addColorStop(1, 'rgba(255,230,120,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(0, 0, r * 1.6, 0, Math.PI * 2); ctx.fill();
+        // apple body
+        ctx.fillStyle = this.color; inkOutline(ctx, 2.2);
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.85);
+        ctx.bezierCurveTo(r, -r * 0.85, r * 1.05, r * 0.85, 0, r * 0.85);
+        ctx.bezierCurveTo(-r * 1.05, r * 0.85, -r, -r * 0.85, 0, -r * 0.85);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        // gold sheen
+        ctx.fillStyle = '#fff5b8';
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.35, -r * 0.35, r * 0.32, r * 0.12, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // stem
+        ctx.strokeStyle = '#3a1e0c'; ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.85); ctx.quadraticCurveTo(6, -r * 1.1, 14, -r * 1.05);
+        ctx.stroke();
+        // tiny leaf
+        ctx.fillStyle = '#3f7a2c'; inkOutline(ctx, 1.4);
+        ctx.beginPath();
+        ctx.ellipse(16, -r * 1.05, 7, 3, 0.5, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+      },
+    },
+    { // 12 — BURSAR'S BOMBSHELL: explodes on impact, knocks foods around
+      name: "Bursar's Bombshell",
+      radius: 34, color: '#1a1108',
+      special: 'bomb',
+      draw(ctx, r, seed) {
+        // body
+        ctx.fillStyle = this.color; inkOutline(ctx);
+        ctx.beginPath(); ctx.arc(0, 0, r * 0.86, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // shine
+        ctx.fillStyle = 'rgba(255,255,255,.25)';
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.25, -r * 0.3, r * 0.32, r * 0.12, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+        // fuse cap
+        ctx.fillStyle = '#3a1e0c';
+        ctx.beginPath();
+        ctx.rect(-r * 0.18, -r * 0.95, r * 0.36, r * 0.18);
+        ctx.fill(); ctx.stroke();
+        // sparking fuse
+        ctx.strokeStyle = '#3a1e0c'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.95);
+        ctx.quadraticCurveTo(8, -r * 1.2, 14, -r * 1.05);
+        ctx.stroke();
+        // spark
+        ctx.fillStyle = '#ffd25a';
+        ctx.beginPath(); ctx.arc(14, -r * 1.05, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,200,40,.6)';
+        ctx.beginPath(); ctx.arc(14, -r * 1.05, 7, 0, Math.PI * 2); ctx.fill();
+        // skull-and-crossbones-ish ☠ — a nod to the comedy bomb
+        ctx.fillStyle = '#c8a44a';
+        ctx.font = "bold 20px 'Caveat', cursive";
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('£', 0, r * 0.05);  // pound sign — Bursar's bomb!
+      },
+    },
   ];
+
+  const APPLE_TIER = 11;
+  const BOMB_TIER = 12;
+  const NORMAL_TIERS = 11;   // tiers 0..10 are the regular merge chain
 
   // ----- Pre-render food sprites to offscreen canvases ---------------------
   const foodSprites = FOODS.map((food, i) => {
@@ -495,6 +593,9 @@
   // ============================================================
   // BACKGROUND — the dining hall (drawn once, blitted each frame)
   // ============================================================
+  // Filled by paintHall — list of eye centres + flags so we can re-draw
+  // pupils each frame so they follow the ladle.
+  const portraitEyes = [];
   const bg = document.createElement('canvas');
   bg.width = W; bg.height = H;
   paintHall(bg.getContext('2d'));
@@ -615,31 +716,7 @@
       c.fillText('H', cx, 91);
     }
 
-    // CENTRAL CHANDELIER (large, hanging on chain)
-    c.strokeStyle = '#2a1a0e'; c.lineWidth = 2.5;
-    c.beginPath(); c.moveTo(W / 2, 0); c.lineTo(W / 2, 130); c.stroke();
-    // chandelier dome (brass)
-    c.fillStyle = '#5b3416'; inkOutline(c, 2.4);
-    c.beginPath();
-    c.moveTo(W / 2 - 60, 145);
-    c.bezierCurveTo(W / 2 - 75, 165, W / 2 + 75, 165, W / 2 + 60, 145);
-    c.closePath(); c.fill(); c.stroke();
-    // chandelier ring of bulbs
-    c.fillStyle = '#3a1e0c';
-    c.beginPath(); c.ellipse(W / 2, 175, 70, 12, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-    for (let i = -3; i <= 3; i++) {
-      const x = W / 2 + i * 20; const y = 187;
-      c.fillStyle = '#fff5b8';
-      c.beginPath(); c.arc(x, y, 5, 0, Math.PI * 2); c.fill();
-      c.strokeStyle = '#3a1e0c'; c.lineWidth = 1.2; c.stroke();
-      // glow
-      c.fillStyle = 'rgba(255,230,120,.4)';
-      c.beginPath(); c.arc(x, y, 9, 0, Math.PI * 2); c.fill();
-    }
-    // central pendant
-    c.fillStyle = '#c8a44a';
-    c.beginPath(); c.arc(W / 2, 200, 6, 0, Math.PI * 2); c.fill();
-    inkOutline(c, 1.5); c.stroke();
+    // (CHANDELIER drawn dynamically each frame in drawChandelier so it can sway)
 
     // ============================
     // DARK MAHOGANY WAINSCOTING & WALLS (sides + gap below banner)
@@ -699,20 +776,22 @@
       c.fillStyle = '#fff5b8';
       c.beginPath(); c.arc(sx, sy - 2, 4, 0, Math.PI * 2); c.fill();
     };
+    // 3 sconces a side, sitting just above each portrait
     for (let i = 0; i < 3; i++) {
-      const sy = 320 + i * 220;
+      const sy = 348 + i * 190;
       sconce(72, sy);
       sconce(W - 72, sy);
     }
 
     // ============================
-    // HEADMASTER PORTRAITS in gilded frames (between sconces)
+    // HEADMASTER PORTRAITS in gilded frames (between sconces).
+    // Bottom row sits above the dining table so Mr Wade is fully visible.
     // ============================
     const portraits = [
-      [16, 392], [16, 612], [16, 832],
-      [W - 124, 392], [W - 124, 612], [W - 124, 832],
+      [16, 360], [16, 545], [16, 730],
+      [W - 124, 360], [W - 124, 545], [W - 124, 730],
     ];
-    const portraitNames = ['F.M. 1862', 'A.G.B. 1875', 'C.A.E. 1899', 'L.M. 1923', 'D.S. 1956', 'M.W. 1988'];
+    const portraitNames = ['F.M. 1862', 'A.G.B. 1875', 'C.A.E. 1899', 'L.M. 1923', 'D.S. 1956', 'Mr Wade · 2026'];
     portraits.forEach(([px, py], idx) => {
       // outer gilded frame
       c.fillStyle = '#d4ad58';
@@ -727,43 +806,158 @@
       canvasGrad.addColorStop(1, '#5a3416');
       c.fillStyle = canvasGrad;
       c.fillRect(px + 11, py + 11, 86, 128);
-      // face
-      c.fillStyle = '#d8b58c';
-      c.beginPath(); c.arc(px + 54, py + 60, 20, 0, Math.PI * 2); c.fill();
-      // hair / wig
-      c.fillStyle = '#1a1108';
-      c.beginPath();
-      c.ellipse(px + 54, py + 46, 22, 12, 0, Math.PI, 0);
-      c.fill();
-      // gown
-      c.fillStyle = '#1a1108';
-      c.beginPath();
-      c.moveTo(px + 22, py + 138); c.lineTo(px + 32, py + 80);
-      c.lineTo(px + 76, py + 80); c.lineTo(px + 86, py + 138);
-      c.closePath(); c.fill();
-      // collar / stock
-      c.fillStyle = '#fff';
-      c.beginPath();
-      c.moveTo(px + 44, py + 78); c.lineTo(px + 64, py + 78);
-      c.lineTo(px + 60, py + 92); c.lineTo(px + 48, py + 92);
-      c.closePath(); c.fill();
-      // expression: small mouth
-      c.strokeStyle = '#2a1a0e'; c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(px + 47, py + 70); c.quadraticCurveTo(px + 54, py + 71, px + 61, py + 70);
-      c.stroke();
-      // eyes
-      c.fillStyle = '#1a1108';
-      c.beginPath(); c.arc(px + 47, py + 58, 1.6, 0, Math.PI * 2); c.fill();
-      c.beginPath(); c.arc(px + 61, py + 58, 1.6, 0, Math.PI * 2); c.fill();
+
+      if (idx === 5) {
+        // ====== MR WADE — present-day headmaster ======
+        // (the only portrait painted from life, hanging in pride of place)
+        const cx = px + 54, cy = py + 62;
+        // shoulders / open-collar dark blazer
+        c.fillStyle = '#1f2a3a';
+        c.beginPath();
+        c.moveTo(px + 18, py + 138);
+        c.quadraticCurveTo(px + 22, py + 92, px + 36, py + 84);
+        c.lineTo(px + 72, py + 84);
+        c.quadraticCurveTo(px + 86, py + 92, px + 90, py + 138);
+        c.closePath(); c.fill();
+        // shirt (open collar, no tie)
+        c.fillStyle = '#f4f0e3';
+        c.beginPath();
+        c.moveTo(px + 44, py + 86); c.lineTo(px + 64, py + 86);
+        c.lineTo(px + 60, py + 100); c.lineTo(px + 48, py + 100);
+        c.closePath(); c.fill();
+        // blazer lapels on top of shirt
+        c.fillStyle = '#1a2230';
+        c.beginPath();
+        c.moveTo(px + 38, py + 88); c.lineTo(px + 48, py + 100); c.lineTo(px + 44, py + 110);
+        c.lineTo(px + 36, py + 100); c.closePath(); c.fill();
+        c.beginPath();
+        c.moveTo(px + 70, py + 88); c.lineTo(px + 60, py + 100); c.lineTo(px + 64, py + 110);
+        c.lineTo(px + 72, py + 100); c.closePath(); c.fill();
+        // neck
+        c.fillStyle = '#dba87a';
+        c.fillRect(cx - 6, cy + 18, 12, 8);
+        // face — slightly oval
+        c.fillStyle = '#e8c39a';
+        c.beginPath();
+        c.ellipse(cx, cy, 17, 20, 0, 0, Math.PI * 2);
+        c.fill();
+        // jaw shadow
+        c.fillStyle = 'rgba(110,70,30,.18)';
+        c.beginPath();
+        c.ellipse(cx, cy + 6, 16, 14, 0, 0, Math.PI * 2);
+        c.fill();
+        // hair — light-brown, swept slightly
+        c.fillStyle = '#8b5a2a';
+        c.beginPath();
+        c.moveTo(cx - 17, cy - 10);
+        c.bezierCurveTo(cx - 19, cy - 26, cx - 4, cy - 28, cx + 6, cy - 22);
+        c.bezierCurveTo(cx + 14, cy - 26, cx + 19, cy - 14, cx + 17, cy - 6);
+        c.bezierCurveTo(cx + 12, cy - 12, cx + 4, cy - 14, cx - 4, cy - 12);
+        c.bezierCurveTo(cx - 12, cy - 10, cx - 16, cy - 6, cx - 17, cy - 10);
+        c.closePath(); c.fill();
+        // hair highlight
+        c.fillStyle = '#a47140';
+        c.beginPath();
+        c.ellipse(cx + 4, cy - 18, 6, 2, -0.2, 0, Math.PI * 2);
+        c.fill();
+        // beard — trimmed reddish-brown along the jaw
+        c.fillStyle = '#7a4a26';
+        c.beginPath();
+        c.moveTo(cx - 14, cy + 4);
+        c.bezierCurveTo(cx - 16, cy + 14, cx - 4, cy + 19, cx, cy + 19);
+        c.bezierCurveTo(cx + 4, cy + 19, cx + 16, cy + 14, cx + 14, cy + 4);
+        c.bezierCurveTo(cx + 8, cy + 8, cx - 8, cy + 8, cx - 14, cy + 4);
+        c.closePath(); c.fill();
+        // moustache joining the beard
+        c.beginPath();
+        c.ellipse(cx - 4, cy + 4, 4, 1.6, -0.2, 0, Math.PI * 2);
+        c.ellipse(cx + 4, cy + 4, 4, 1.6, 0.2, 0, Math.PI * 2);
+        c.fill();
+        // mouth — friendly half-smile peeking through the beard
+        c.strokeStyle = '#5a2a1b'; c.lineWidth = 1.4;
+        c.beginPath();
+        c.moveTo(cx - 4, cy + 8);
+        c.quadraticCurveTo(cx, cy + 11, cx + 4, cy + 8);
+        c.stroke();
+        // eyebrows
+        c.strokeStyle = '#5a3416'; c.lineWidth = 1.6;
+        c.beginPath();
+        c.moveTo(cx - 11, cy - 8); c.quadraticCurveTo(cx - 6, cy - 10, cx - 2, cy - 8);
+        c.moveTo(cx + 2, cy - 8);  c.quadraticCurveTo(cx + 6, cy - 10, cx + 11, cy - 8);
+        c.stroke();
+        // glasses — dark frames, square-ish
+        c.strokeStyle = '#1a1108'; c.lineWidth = 2;
+        c.beginPath();
+        c.rect(cx - 12, cy - 6, 9, 7);
+        c.rect(cx + 3, cy - 6, 9, 7);
+        // bridge
+        c.moveTo(cx - 3, cy - 3); c.lineTo(cx + 3, cy - 3);
+        // arms
+        c.moveTo(cx - 12, cy - 4); c.lineTo(cx - 17, cy - 3);
+        c.moveTo(cx + 12, cy - 4); c.lineTo(cx + 17, cy - 3);
+        c.stroke();
+        // (eyes intentionally NOT drawn here — added each frame so they
+        //  follow the ladle. Lens center coords pushed below.)
+        portraitEyes.push({
+          mrWade: true,
+          ex: cx - 7, ey: cy - 2,    // left lens centre
+          lx: cx + 7, ly: cy - 2,    // right lens centre
+          maxShift: 1.6,
+        });
+        // a tiny lanyard touch (Mr Wade had one in the photo)
+        c.strokeStyle = '#6c7a4a'; c.lineWidth = 1.4;
+        c.beginPath();
+        c.moveTo(cx - 6, cy + 22); c.quadraticCurveTo(cx - 12, cy + 28, cx - 8, cy + 38);
+        c.moveTo(cx + 6, cy + 22); c.quadraticCurveTo(cx + 12, cy + 28, cx + 8, cy + 38);
+        c.stroke();
+        c.fillStyle = '#c8a44a';
+        c.fillRect(cx - 5, cy + 36, 10, 6);
+      } else {
+        // ====== Generic stern Victorian/Edwardian headmaster ======
+        // face
+        c.fillStyle = '#d8b58c';
+        c.beginPath(); c.arc(px + 54, py + 60, 20, 0, Math.PI * 2); c.fill();
+        // hair / wig
+        c.fillStyle = '#1a1108';
+        c.beginPath();
+        c.ellipse(px + 54, py + 46, 22, 12, 0, Math.PI, 0);
+        c.fill();
+        // gown
+        c.fillStyle = '#1a1108';
+        c.beginPath();
+        c.moveTo(px + 22, py + 138); c.lineTo(px + 32, py + 80);
+        c.lineTo(px + 76, py + 80); c.lineTo(px + 86, py + 138);
+        c.closePath(); c.fill();
+        // collar / stock
+        c.fillStyle = '#fff';
+        c.beginPath();
+        c.moveTo(px + 44, py + 78); c.lineTo(px + 64, py + 78);
+        c.lineTo(px + 60, py + 92); c.lineTo(px + 48, py + 92);
+        c.closePath(); c.fill();
+        // expression: small mouth
+        c.strokeStyle = '#2a1a0e'; c.lineWidth = 1.5;
+        c.beginPath();
+        c.moveTo(px + 47, py + 70); c.quadraticCurveTo(px + 54, py + 71, px + 61, py + 70);
+        c.stroke();
+        // record eye centres (drawn each frame)
+        portraitEyes.push({
+          mrWade: false,
+          ex: px + 47, ey: py + 58,
+          lx: px + 61, ly: py + 58,
+          maxShift: 1.4,
+        });
+      }
+
       // outer frame outline
       inkOutline(c, 2); c.strokeRect(px, py, 108, 150);
       // brass nameplate
       c.fillStyle = '#c8a44a';
-      c.fillRect(px + 18, py + 152, 72, 13);
-      c.strokeRect(px + 18, py + 152, 72, 13);
+      c.fillRect(px + 16, py + 152, 76, 14);
+      c.strokeRect(px + 16, py + 152, 76, 14);
       c.fillStyle = '#2a1a0e';
-      c.font = "bold 9px 'Special Elite', monospace";
+      c.font = idx === 5
+        ? "bold 11px 'Caveat', cursive"
+        : "bold 9px 'Special Elite', monospace";
       c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(portraitNames[idx], px + 54, py + 159);
     });
@@ -939,10 +1133,14 @@
   // PHYSICS
   // ============================================================
   const engine = Engine.create();
-  engine.world.gravity.y = 1.0;
+  engine.world.gravity.y = 1.05;
+  // More iterations = less inter-penetration, snappier resting contacts.
+  engine.positionIterations = 10;
+  engine.velocityIterations = 8;
+  engine.constraintIterations = 4;
   const world = engine.world;
 
-  const wallOpts = { isStatic: true, restitution: 0.05, friction: 0.5 };
+  const wallOpts = { isStatic: true, restitution: 0.02, friction: 0.7 };
   const ground = Bodies.rectangle((PLAY_LEFT + PLAY_RIGHT) / 2, PLAY_BOTTOM + 28, PLAY_RIGHT - PLAY_LEFT + 60, 56, wallOpts);
   const leftW = Bodies.rectangle(PLAY_LEFT - 14, (PLAY_TOP + PLAY_BOTTOM) / 2, 28, PLAY_BOTTOM - PLAY_TOP + 240, wallOpts);
   const rightW = Bodies.rectangle(PLAY_RIGHT + 14, (PLAY_TOP + PLAY_BOTTOM) / 2, 28, PLAY_BOTTOM - PLAY_TOP + 240, wallOpts);
@@ -954,15 +1152,18 @@
   function spawnAt(tier, x, y, opts = {}) {
     const f = FOODS[tier];
     const body = Bodies.circle(x, y, f.radius, {
-      restitution: 0.16,
-      friction: 0.4,
-      frictionAir: 0.0008,
-      density: 0.0011 + tier * 0.00018,
+      restitution: 0.06,           // less springy
+      friction: 0.55,              // more grip
+      frictionStatic: 0.9,
+      frictionAir: 0.0009,
+      slop: 0.02,                  // tighter contacts
+      density: 0.0012 + tier * 0.00022,
       label: 'food',
       ...opts,
     });
     body.tier = tier;
     body.spawnedAt = performance.now();
+    body.squash = 0;               // visual squish on contact, decays each frame
     items.add(body);
     World.add(world, body);
     return body;
@@ -978,34 +1179,140 @@
     for (const pair of e.pairs) {
       const a = pair.bodyA, b = pair.bodyB;
       if (a.label !== 'food' || b.label !== 'food') continue;
-      if (a.tier !== b.tier) continue;
+
+      // ----- contact "thump": squish both bodies and add a tiny shake on
+      //       hard impacts. Runs even if no merge happens, so every collision
+      //       feels alive.
+      const speed = Math.hypot(
+        (a.velocity.x - b.velocity.x), (a.velocity.y - b.velocity.y)
+      );
+      const impact = Math.min(1, speed / 7);
+      a.squash = Math.max(a.squash, impact);
+      b.squash = Math.max(b.squash, impact);
+      if (impact > 0.5 && (a.tier >= 6 || b.tier >= 6)) {
+        addShake(impact * 4);
+        playThud();
+      }
+
       if (merging.has(a.id) || merging.has(b.id)) continue;
 
-      merging.add(a.id); merging.add(b.id);
       const cx = (a.position.x + b.position.x) / 2;
       const cy = (a.position.y + b.position.y) / 2;
 
-      if (a.tier >= FOODS.length - 1) {
+      // ----- BURSAR'S BOMBSHELL: explode on contact with any food
+      if (a.tier === BOMB_TIER || b.tier === BOMB_TIER) {
+        const bomb = a.tier === BOMB_TIER ? a : b;
+        const other = a.tier === BOMB_TIER ? b : a;
+        merging.add(bomb.id); merging.add(other.id);
+        explodeBomb(bomb, other);
+        continue;
+      }
+
+      // ----- GOLDEN APPLE: bumps any normal food up one tier
+      if (a.tier === APPLE_TIER || b.tier === APPLE_TIER) {
+        const apple = a.tier === APPLE_TIER ? a : b;
+        const other = a.tier === APPLE_TIER ? b : a;
+        merging.add(apple.id); merging.add(other.id);
+        if (other.tier === APPLE_TIER) {
+          // Two apples — pure-gold bonus
+          score += 500;
+          burstParticles(cx, cy, '#fff5b8', 40, 6);
+          burstParticles(cx, cy, '#c8a44a', 28, 5);
+          playFanfare();
+          showFlash('Two golden apples! +500');
+          removeBody(apple); removeBody(other);
+          continue;
+        }
+        // Normal target — bump it up
+        const next = Math.min(NORMAL_TIERS - 1, other.tier + 1);
+        const bonus = 50 + (next + 1) * 12;
+        const mult = registerCombo(`Golden +${bonus}`);
+        score += bonus * mult;
+        if (next > highestTier) { highestTier = next; updateMenuHighlight(); }
+        removeBody(apple); removeBody(other);
+        const nb = spawnAt(next, cx, cy);
+        Body.setVelocity(nb, { x: 0, y: -1.5 });
+        burstParticles(cx, cy, '#fff5b8', 26, 5);
+        burstParticles(cx, cy, FOODS[next].color, 14, 3);
+        playMerge(next);
+        addShake(3);
+        continue;
+      }
+
+      // Power-ups don't merge with each other except the apple+apple case above
+      if (a.tier === BOMB_TIER || b.tier === BOMB_TIER) continue;
+      if (a.tier !== b.tier) continue;
+
+      merging.add(a.id); merging.add(b.id);
+
+      if (a.tier >= NORMAL_TIERS - 1) {
         // Two trifles! ascend to glory
         score += 1000;
         burstParticles(cx, cy, '#c8a44a', 36, 6);
         burstParticles(cx, cy, '#7a1f2b', 24, 5);
         playFanfare();
         showFlash('A double Trifle! +1000');
+        addShake(8);
         removeBody(a); removeBody(b);
         continue;
       }
       const next = a.tier + 1;
-      score += (next + 1) * (next + 2) / 2 * 5;
+      const base = (next + 1) * (next + 2) / 2 * 5;
+      const mult = registerCombo(MERGE_QUIPS[next]);
+      score += base * mult;
       if (next > highestTier) { highestTier = next; updateMenuHighlight(); }
       removeBody(a); removeBody(b);
       const nb = spawnAt(next, cx, cy);
       Body.setVelocity(nb, { x: 0, y: -1.5 });
+      nb.squash = 1;                      // newborn pop
       burstParticles(cx, cy, FOODS[next].color, 14, 3.5);
       playMerge(next);
-      if (MERGE_QUIPS[next]) showFlash(MERGE_QUIPS[next]);
+      // Bigger merges shake the room and swing the chandelier
+      if (next >= 6) {
+        addShake(2 + next * 0.6);
+        chandelier.swayVel += (Math.random() - 0.5) * (0.06 + next * 0.012);
+      }
     }
   });
+
+  function explodeBomb(bomb, primary) {
+    const cx = bomb.position.x, cy = bomb.position.y;
+    const blastInner = 90;
+    const blastOuter = 220;
+    let cleared = 0;
+    // shock-wave: every nearby food gets an outward impulse, very-near foods vanish
+    for (const body of [...items]) {
+      if (body === bomb) continue;
+      const dx = body.position.x - cx;
+      const dy = body.position.y - cy;
+      const d = Math.max(1, Math.hypot(dx, dy));
+      if (d < blastInner && body.tier < 8) {
+        // small pieces are vapourised
+        cleared++;
+        score += 25;
+        burstParticles(body.position.x, body.position.y, FOODS[body.tier].color, 10, 4);
+        removeBody(body);
+        continue;
+      }
+      if (d < blastOuter) {
+        const force = (1 - d / blastOuter) * 0.06;
+        Body.applyForce(body, body.position, {
+          x: (dx / d) * force,
+          y: (dy / d) * force - 0.012,    // slight upward kick
+        });
+        body.squash = 1;
+      }
+    }
+    if (primary) { score += 25; cleared++; removeBody(primary); }
+    removeBody(bomb);
+    // visuals
+    burstParticles(cx, cy, '#ffd25a', 60, 8);
+    burstParticles(cx, cy, '#ed8a23', 40, 7);
+    burstParticles(cx, cy, '#c1233b', 24, 6);
+    addShake(14);
+    playBoom();
+    showFlash(`KABOOM! cleared ${cleared} +${cleared * 25}`);
+  }
 
   // ============================================================
   // PARTICLES
@@ -1071,9 +1378,12 @@
   }
   function playDrop() { tone(220, 0.08, 'sine', 0.15); }
   function playMerge(tier) {
-    const base = 280 + tier * 50;
-    tone(base, 0.09, 'triangle', 0.18);
-    setTimeout(() => tone(base * 1.5, 0.12, 'sine', 0.15), 60);
+    // Climb a pentatonic scale — each tier is a step higher, so a long combo
+    // builds a satisfying melodic phrase up to the trifle.
+    const pentaC = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50];
+    const f = pentaC[Math.min(tier, pentaC.length - 1)];
+    tone(f, 0.12, 'triangle', 0.2);
+    setTimeout(() => tone(f * 1.5, 0.14, 'sine', 0.14), 60);
   }
   function playFanfare() {
     [523, 659, 784, 1047].forEach((f, i) =>
@@ -1082,6 +1392,40 @@
   function playGameOver() {
     [440, 392, 349, 294].forEach((f, i) =>
       setTimeout(() => tone(f, 0.25, 'sawtooth', 0.18), i * 160));
+  }
+  function playThud() {
+    // soft, low percussive bump — used on hard contacts
+    if (muted) return;
+    const a = ac(); if (!a) return;
+    const o = a.createOscillator(); const g = a.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(110, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(48, a.currentTime + 0.18);
+    g.gain.setValueAtTime(0, a.currentTime);
+    g.gain.linearRampToValueAtTime(0.16, a.currentTime + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.2);
+    o.connect(g); g.connect(a.destination);
+    o.start(); o.stop(a.currentTime + 0.22);
+  }
+  function playBoom() {
+    if (muted) return;
+    const a = ac(); if (!a) return;
+    // noise burst
+    const buf = a.createBuffer(1, a.sampleRate * 0.4, a.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2);
+    const src = a.createBufferSource(); src.buffer = buf;
+    const g = a.createGain();
+    g.gain.setValueAtTime(0.35, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + 0.45);
+    src.connect(g); g.connect(a.destination);
+    src.start();
+    // rumble
+    tone(80, 0.4, 'square', 0.22);
+  }
+  function playSparkle() {
+    if (muted) return;
+    [880, 1320, 1760].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'triangle', 0.14), i * 50));
   }
 
   // ============================================================
@@ -1100,6 +1444,128 @@
   let score = 0;
   let highestTier = -1;
   let best = Number(localStorage.getItem('haileybury-suika-best') || 0);
+
+  // ---- Combo system (chained merges within COMBO_WINDOW ms) --------------
+  const COMBO_WINDOW = 1700;
+  let comboMultiplier = 1;
+  let lastMergeAt = 0;
+  const MAX_COMBO = 8;
+  function registerCombo(quip) {
+    const now = performance.now();
+    comboMultiplier = (now - lastMergeAt < COMBO_WINDOW) ? Math.min(MAX_COMBO, comboMultiplier + 1) : 1;
+    lastMergeAt = now;
+    if (comboMultiplier > 1) {
+      const labels = ['', '', 'TWO!', 'THREE!', 'FOUR! ON FIRE', 'FIVE!! GLORIOUS', 'SIX!!! UNHEARD OF', 'COMBO X' + comboMultiplier];
+      showFlash(`x${comboMultiplier} ${labels[Math.min(comboMultiplier, labels.length - 1)] || ''}`.trim());
+      playSparkle();
+    } else if (quip) {
+      showFlash(quip);
+    }
+    return comboMultiplier;
+  }
+
+  // ---- Camera shake -------------------------------------------------------
+  let shakeMag = 0;
+  let shakeX = 0, shakeY = 0;
+  function addShake(amount) { shakeMag = Math.min(20, shakeMag + amount); }
+  function updateShake() {
+    if (shakeMag < 0.3) { shakeMag = 0; shakeX = 0; shakeY = 0; return; }
+    shakeX = (Math.random() - 0.5) * shakeMag * 2;
+    shakeY = (Math.random() - 0.5) * shakeMag * 2;
+    shakeMag *= 0.84;
+  }
+
+  // ---- Chandelier (sways with big merges) --------------------------------
+  const chandelier = { angle: 0, vel: 0, swayVel: 0 };
+  // expose swayVel via a getter/setter that just adds it onto vel cleanly
+  Object.defineProperty(chandelier, 'swayVel', {
+    set(v) { chandelier.vel += v; },
+    get() { return chandelier.vel; },
+  });
+  function updateChandelier(dt) {
+    // simple damped harmonic motion: pendulum
+    const k = 6, damp = 1.4;
+    chandelier.vel += -k * chandelier.angle * dt - damp * chandelier.vel * dt;
+    chandelier.angle += chandelier.vel * dt;
+  }
+
+  // ---- The Pigeon (occasional comedic visitor) ---------------------------
+  const pigeon = { active: false, x: 0, y: 0, vx: 0, t: 0, holding: null };
+  let nextPigeonAt = performance.now() + 18000 + Math.random() * 12000;
+  function maybeSpawnPigeon() {
+    if (pigeon.active) return;
+    if (performance.now() < nextPigeonAt) return;
+    pigeon.active = true;
+    pigeon.t = 0;
+    const fromLeft = Math.random() < 0.5;
+    pigeon.x = fromLeft ? -60 : W + 60;
+    pigeon.y = 110 + Math.random() * 60;
+    pigeon.vx = fromLeft ? 3.2 : -3.2;
+    pigeon.holding = null;
+    nextPigeonAt = performance.now() + 28000 + Math.random() * 18000;
+  }
+  function updatePigeon(dt) {
+    if (!pigeon.active) return;
+    pigeon.t += dt;
+    pigeon.x += pigeon.vx;
+    // dip to grab a pea around the middle of the visit, climb out the other side
+    const phase = pigeon.t;
+    if (phase < 1.0) pigeon.y += 1.4;
+    else pigeon.y -= 1.6;
+    // try to nick a pea (tier 0) at the dip
+    if (!pigeon.holding && phase > 0.8 && phase < 1.4) {
+      let target = null, bestD = 80;
+      for (const b of items) {
+        if (b.tier !== 0) continue;
+        const d = Math.hypot(b.position.x - pigeon.x, b.position.y - pigeon.y);
+        if (d < bestD) { bestD = d; target = b; }
+      }
+      if (target) {
+        pigeon.holding = { tier: target.tier };
+        score = Math.max(0, score - 5);   // tiny penalty
+        burstParticles(target.position.x, target.position.y, '#7fb83a', 8, 3);
+        removeBody(target);
+        showFlash('A pigeon nicked a pea!');
+      }
+    }
+    if (pigeon.x < -120 || pigeon.x > W + 120) pigeon.active = false;
+  }
+  function drawPigeon() {
+    if (!pigeon.active) return;
+    const x = pigeon.x, y = pigeon.y;
+    const flap = Math.sin(pigeon.t * 14) * 0.6;
+    ctx.save();
+    ctx.translate(x, y);
+    if (pigeon.vx < 0) ctx.scale(-1, 1);   // face direction of travel
+    // body
+    ctx.fillStyle = '#8a93a4'; inkOutline(ctx, 1.8);
+    ctx.beginPath(); ctx.ellipse(0, 0, 22, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // head
+    ctx.beginPath(); ctx.arc(18, -6, 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // beak
+    ctx.fillStyle = '#e9b04a';
+    ctx.beginPath();
+    ctx.moveTo(26, -6); ctx.lineTo(34, -4); ctx.lineTo(26, -2); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // eye
+    ctx.fillStyle = '#1a1108';
+    ctx.beginPath(); ctx.arc(20, -7, 1.8, 0, Math.PI * 2); ctx.fill();
+    // wing (flapping)
+    ctx.fillStyle = '#6c7585';
+    ctx.beginPath();
+    ctx.ellipse(-2, -6 + flap * 6, 14, 6 + flap * 4, -0.2 + flap * 0.4, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // legs
+    ctx.strokeStyle = '#e9b04a'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-4, 12); ctx.lineTo(-4, 18); ctx.moveTo(4, 12); ctx.lineTo(4, 18); ctx.stroke();
+    // pea in beak (if stolen)
+    if (pigeon.holding) {
+      ctx.fillStyle = '#7fb83a'; inkOutline(ctx, 1.4);
+      ctx.beginPath(); ctx.arc(36, -4, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   let nextTier = randomNextTier();
   let queuedTier = randomNextTier();
   let ladleX = (PLAY_LEFT + PLAY_RIGHT) / 2;
@@ -1112,6 +1578,11 @@
   let flashText = null; let flashUntil = 0;
 
   function randomNextTier() {
+    // small chance of a power-up dropping into the queue
+    const s = Math.random();
+    if (s < 1 / 90) return APPLE_TIER;   // ~1 in 90 drops
+    if (s < 1 / 90 + 1 / 110) return BOMB_TIER; // ~1 in 110 drops
+
     // bias toward smaller tiers, classic Suika
     const r = Math.random();
     if (r < 0.45) return 0;
@@ -1186,28 +1657,55 @@
     nextTier = queuedTier;
     queuedTier = randomNextTier();
     drawNextPreview();
-    dropCooldown = 0.42; // seconds
+    dropCooldown = 0.32; // seconds — snappier with the smaller bowl
     playDrop();
   }
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
-  // Mouse / touch as a bonus: position ladle under pointer, click to drop
+  // ----- Mouse: hover to aim, click to drop --------------------------------
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = (e.clientX - rect.left) * (W / rect.width);
     ladleX = clamp(x, PLAY_LEFT + 30, PLAY_RIGHT - 30);
   });
-  canvas.addEventListener('mousedown', () => { if (started && !paused && !gameOver) drop(); });
-  canvas.addEventListener('touchstart', (e) => {
-    if (e.touches[0]) {
-      const rect = canvas.getBoundingClientRect();
-      const x = (e.touches[0].clientX - rect.left) * (W / rect.width);
-      ladleX = clamp(x, PLAY_LEFT + 30, PLAY_RIGHT - 30);
-    }
+  canvas.addEventListener('mousedown', () => {
     if (started && !paused && !gameOver) drop();
+  });
+
+  // ----- Touch (iPad / phone): drag to aim, lift to drop -------------------
+  // - touchstart  : begin a drag, snap ladle to the touch x
+  // - touchmove   : slide the ladle with the finger (no scrolling)
+  // - touchend    : release → drop the dish
+  // The page is prevented from scrolling/zooming while a finger is on the
+  // canvas (canvas has `touch-action: none`).
+  let touchActive = false;
+  function touchToCanvasX(t) {
+    const rect = canvas.getBoundingClientRect();
+    return (t.clientX - rect.left) * (W / rect.width);
+  }
+  canvas.addEventListener('touchstart', (e) => {
+    if (!started || paused || gameOver) return; // let the overlay button handle taps
+    if (!e.touches[0]) return;
     e.preventDefault();
+    // Resume audio context — iOS requires a user gesture
+    const a = ac(); if (a && a.state === 'suspended') a.resume();
+    touchActive = true;
+    ladleX = clamp(touchToCanvasX(e.touches[0]), PLAY_LEFT + 30, PLAY_RIGHT - 30);
   }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!touchActive || !e.touches[0]) return;
+    e.preventDefault();
+    ladleX = clamp(touchToCanvasX(e.touches[0]), PLAY_LEFT + 30, PLAY_RIGHT - 30);
+  }, { passive: false });
+  const releaseTouch = (e) => {
+    if (!touchActive) return;
+    e?.preventDefault?.();
+    touchActive = false;
+    if (started && !paused && !gameOver) drop();
+  };
+  canvas.addEventListener('touchend', releaseTouch, { passive: false });
+  canvas.addEventListener('touchcancel', () => { touchActive = false; });
 
   // ============================================================
   // UI: menu list, next preview, overlay
@@ -1216,6 +1714,7 @@
     const ol = document.getElementById('menu');
     ol.innerHTML = '';
     FOODS.forEach((f, i) => {
+      if (f.special) return;          // power-ups don't sit in the climbing chain
       const li = document.createElement('li');
       li.textContent = f.name;
       li.dataset.tier = String(i);
@@ -1248,12 +1747,13 @@
   }
   drawNextPreview();
 
-  function showOverlay(title, body, btn = 'Resume') {
+  function showOverlay(title, body, btn = 'Resume', { showPhoto = false } = {}) {
     const ov = document.getElementById('overlay');
     document.getElementById('ovTitle').textContent = title;
     document.getElementById('ovBody').innerHTML = body;
     const button = document.getElementById('ovBtn');
     button.textContent = btn;
+    document.getElementById('ovPhotoBtn').classList.toggle('hidden', !showPhoto);
     ov.classList.remove('hidden');
   }
   function hideOverlay() {
@@ -1263,6 +1763,40 @@
     if (!started || gameOver) reset();
     else { paused = false; hideOverlay(); canvas.focus(); }
   });
+  document.getElementById('ovPhotoBtn').addEventListener('click', exportPhoto);
+
+  // ---- Photo export — render the bowl + a hand-drawn caption to PNG -------
+  function exportPhoto() {
+    const out = document.createElement('canvas');
+    const cap = 120;
+    out.width = W; out.height = H + cap;
+    const oc = out.getContext('2d');
+    // a soft parchment matte around the canvas
+    oc.fillStyle = '#f3e7c9';
+    oc.fillRect(0, 0, out.width, out.height);
+    oc.drawImage(canvas, 0, 0);
+    // caption strip
+    oc.fillStyle = '#7a1f2b';
+    oc.fillRect(0, H, W, cap);
+    // gold trim
+    oc.fillStyle = '#c8a44a';
+    oc.fillRect(0, H, W, 4);
+    oc.fillRect(0, H + cap - 4, W, 4);
+    // text
+    oc.fillStyle = '#c8a44a';
+    oc.textAlign = 'center'; oc.textBaseline = 'middle';
+    oc.font = "bold 44px 'Caveat', cursive";
+    oc.fillText('The Haileybury Dining Hall', W / 2, H + 38);
+    oc.font = "bold 32px 'Caveat', cursive";
+    oc.fillText(`Score: ${Math.floor(score)} — ${new Date().toLocaleDateString()}`, W / 2, H + 84);
+
+    // download
+    const url = out.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `haileybury-dinner-${Math.floor(score)}.png`;
+    document.body.appendChild(link); link.click(); link.remove();
+  }
 
   // ============================================================
   // GAME OVER detection
@@ -1287,8 +1821,9 @@
         playGameOver();
         showOverlay(
           'The bowl runneth over!',
-          `You scored <b>${score}</b> points.<br/>Best: <b>${best}</b>.<br/><br/>Press <b>R</b>, <b>Enter</b>, or the button to start a new dinner.`,
-          'Serve again'
+          `You scored <b>${Math.floor(score)}</b> points.<br/>Best: <b>${Math.floor(best)}</b>.<br/><br/>Press <b>R</b>, <b>Enter</b>, or the button to start a new dinner.`,
+          'Serve again',
+          { showPhoto: true },
         );
       }
     } else {
@@ -1361,8 +1896,90 @@
       ctx.save();
       ctx.translate(b.position.x, b.position.y);
       ctx.rotate(b.angle);
+      // squash on collision: stretch wider, squish shorter, decays each frame
+      if (b.squash > 0.01) {
+        const sx = 1 + b.squash * 0.18;
+        const sy = 1 - b.squash * 0.18;
+        ctx.scale(sx, sy);
+        b.squash *= 0.82;
+      } else {
+        b.squash = 0;
+      }
+      // golden apples shimmer slightly
+      if (b.tier === APPLE_TIER) {
+        const pulse = 1 + Math.sin(performance.now() / 160) * 0.04;
+        ctx.scale(pulse, pulse);
+      }
       ctx.drawImage(sprite, -sprite.width / 2, -sprite.height / 2);
       ctx.restore();
+    }
+  }
+
+  // ---- Animated chandelier (replaces the static one in the bg) -----------
+  function drawChandelier() {
+    const baseX = W / 2;
+    const baseY = 130;
+    // pendulum hangs from the dome peak; a is the swing angle in radians
+    const a = chandelier.angle;
+    const len = 80;
+    // bottom of chain at baseY + len, offset by sin(a)*len
+    const cx = baseX + Math.sin(a) * len * 0.6;   // dampen x sway
+    const cy = baseY + Math.cos(a) * len * 0.05;  // tiny y wobble
+    // chain
+    ctx.strokeStyle = '#2a1a0e'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(baseX, 0); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(a * 0.8);
+    // dome (brass)
+    ctx.fillStyle = '#5b3416'; inkOutline(ctx, 2.4);
+    ctx.beginPath();
+    ctx.moveTo(-60, 15);
+    ctx.bezierCurveTo(-75, 35, 75, 35, 60, 15);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // ring of bulbs
+    ctx.fillStyle = '#3a1e0c';
+    ctx.beginPath(); ctx.ellipse(0, 45, 70, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    for (let i = -3; i <= 3; i++) {
+      const x = i * 20, y = 57;
+      ctx.fillStyle = 'rgba(255,230,120,.35)';
+      ctx.beginPath(); ctx.arc(x, y, 9, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff5b8';
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#3a1e0c'; ctx.lineWidth = 1.2; ctx.stroke();
+    }
+    // central pendant
+    ctx.fillStyle = '#c8a44a';
+    ctx.beginPath(); ctx.arc(0, 70, 6, 0, Math.PI * 2); ctx.fill();
+    inkOutline(ctx, 1.5); ctx.stroke();
+    ctx.restore();
+  }
+
+  // ---- Portrait eyes follow the ladle ------------------------------------
+  function drawPortraitEyes() {
+    // gaze target is the ladle's current position (or bowl centre when idle)
+    const tx = (started && !gameOver) ? ladleX : (PLAY_LEFT + PLAY_RIGHT) / 2;
+    const ty = (started && !gameOver) ? LADLE_Y : (PLAY_TOP + PLAY_BOTTOM) / 2;
+    for (const e of portraitEyes) {
+      // left eye
+      const ldx = tx - e.ex, ldy = ty - e.ey;
+      const ld = Math.max(1, Math.hypot(ldx, ldy));
+      const lex = e.ex + (ldx / ld) * e.maxShift;
+      const ley = e.ey + (ldy / ld) * e.maxShift;
+      // right eye
+      const rdx = tx - e.lx, rdy = ty - e.ly;
+      const rd = Math.max(1, Math.hypot(rdx, rdy));
+      const rex = e.lx + (rdx / rd) * e.maxShift;
+      const rey = e.ly + (rdy / rd) * e.maxShift;
+      // sclera (whites) — only for Mr Wade who has glasses; the others have just dots
+      if (e.mrWade) {
+        ctx.fillStyle = '#fbf2d4';
+        ctx.beginPath(); ctx.arc(e.ex, e.ey, 2.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(e.lx, e.ly, 2.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = '#1a1108';
+      ctx.beginPath(); ctx.arc(lex, ley, e.mrWade ? 1.8 : 1.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(rex, rey, e.mrWade ? 1.8 : 1.6, 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -1406,28 +2023,47 @@
       Engine.update(engine, dt * 1000);
       updateParticles(dt);
       checkGameOver(dt);
+      // combo timeout
+      if (comboMultiplier > 1 && performance.now() - lastMergeAt > COMBO_WINDOW) {
+        comboMultiplier = 1;
+      }
+      maybeSpawnPigeon();
+      updatePigeon(dt);
     } else {
       // still let particles drift on pause/game-over for a touch of life
       updateParticles(dt);
     }
+    // chandelier + shake always animate (even when paused — feels alive)
+    updateChandelier(dt);
+    updateShake();
 
     // ----- render -----
     ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    if (shakeMag > 0) ctx.translate(shakeX, shakeY);
     ctx.drawImage(bg, 0, 0);
+    drawChandelier();
+    drawPortraitEyes();
     drawDangerLine();
     drawFoods();
+    drawPigeon();
     drawParticles();
     if (started && !gameOver) drawLadle();
     drawHUD();
+    ctx.restore();
 
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
-  // intro overlay
+  // intro overlay — adapts to touch vs keyboard
+  const isTouch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+  const controlsHint = isTouch
+    ? '<b>Drag</b> across the bowl to aim, then <b>lift your finger</b> to drop the dish.'
+    : 'Use <b>← / →</b> (or <b>A / D</b>) to slide the ladle, then <b>Space</b> or <b>↓</b> to drop.';
   showOverlay(
     'The Haileybury Dining Hall',
-    'Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, fish fingers, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/><i>Sursum Corda — lift up your plates!</i>',
+    `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, fish fingers, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
     'Start Dinner'
   );
 })();

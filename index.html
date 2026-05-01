@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#7a1f2b" />
   <title>The Haileybury Dining Hall — A Suika-Style Feast</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -23,7 +26,10 @@
           <div class="panel">
             <h1 id="ovTitle">Pull up a chair</h1>
             <p id="ovBody">Drop the food into the bowl. Match two of the same to make it grow into the next dish.<br/>Make it all the way to the legendary <b>Haileybury Trifle</b>.</p>
-            <button id="ovBtn">Start Dinner</button>
+            <div class="btn-row">
+              <button id="ovBtn">Start Dinner</button>
+              <button id="ovPhotoBtn" class="btn-secondary hidden">&#128247; Save dinner photo</button>
+            </div>
             <p class="hint"><small>Tip: arrow keys / A &amp; D to slide &middot; Space or &darr; to drop &middot; P pause &middot; R restart</small></p>
           </div>
         </div>
