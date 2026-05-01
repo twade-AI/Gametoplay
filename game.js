@@ -92,15 +92,9 @@
     }
   }
 
-  function shadowBlob(ctx, r) {
-    ctx.save();
-    ctx.globalAlpha = 0.22;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(2, r * 0.92, r * 0.95, r * 0.18, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
+  // Note: previously each food sprite had a faint shadow blob, but it caused
+  // visible gaps between stacked foods. Removed so foods sit flush.
+
 
   // ============================================================
   // FOODS — 11 tiers, smallest to largest
@@ -585,7 +579,6 @@
     c.width = sz; c.height = sz;
     const cx = c.getContext('2d');
     cx.translate(sz / 2, sz / 2);
-    shadowBlob(cx, food.radius);
     food.draw(cx, food.radius, 9171 + i * 137);
     return c;
   });
@@ -1152,18 +1145,21 @@
   function spawnAt(tier, x, y, opts = {}) {
     const f = FOODS[tier];
     const body = Bodies.circle(x, y, f.radius, {
-      restitution: 0.06,           // less springy
-      friction: 0.55,              // more grip
+      // Higher restitution so a freshly-dropped dish bounces around in the
+      // bowl. High friction + air drag still kill it within a couple seconds
+      // so the pile settles cleanly.
+      restitution: 0.32,
+      friction: 0.55,
       frictionStatic: 0.9,
-      frictionAir: 0.0009,
-      slop: 0.02,                  // tighter contacts
+      frictionAir: 0.0008,
+      slop: 0.02,
       density: 0.0012 + tier * 0.00022,
       label: 'food',
       ...opts,
     });
     body.tier = tier;
     body.spawnedAt = performance.now();
-    body.squash = 0;               // visual squish on contact, decays each frame
+    body.squash = 0;
     items.add(body);
     World.add(world, body);
     return body;
@@ -1735,7 +1731,9 @@
     const r = FOODS[nextTier].radius;
     const x = clamp(ladleX, PLAY_LEFT + r + 4, PLAY_RIGHT - r - 4);
     const b = spawnAt(nextTier, x, LADLE_Y + r + 10);
-    Body.setVelocity(b, { x: 0, y: 2 });
+    // Push it down a bit harder so it hits the bowl (or the pile) with some
+    // gusto and does a livelier bounce on entry.
+    Body.setVelocity(b, { x: (Math.random() - 0.5) * 0.6, y: 4 });
     nextTier = queuedTier;
     queuedTier = randomNextTier();
     drawNextPreview();

@@ -10,7 +10,7 @@
   --shadow: 0 14px 40px rgba(50,30,10,.35);
 
   /* HUD width — used by .board grid in landscape */
-  --hud-w: 280px;
+  --hud-w: 220px;
 
   /* Honour the iOS safe-area insets so the page never sits under the notch */
   --safe-t: env(safe-area-inset-top, 0px);
@@ -59,21 +59,21 @@ body{
     repeating-linear-gradient(45deg, rgba(0,0,0,.07) 0 6px, transparent 6px 12px),
     var(--maroon);
   color:var(--gold);
-  border-radius:14px;
-  padding:6px 24px 4px;
-  box-shadow: 0 6px 0 rgba(0,0,0,.18), inset 0 0 0 4px rgba(200,164,74,.4);
+  border-radius:12px;
+  padding:3px 22px 2px;
+  box-shadow: 0 4px 0 rgba(0,0,0,.18), inset 0 0 0 3px rgba(200,164,74,.4);
   transform:rotate(-.4deg);
   position:relative;
 }
 .title-banner::before, .title-banner::after{
-  content:"";position:absolute;top:50%;width:24px;height:24px;border-radius:50%;
+  content:"";position:absolute;top:50%;width:18px;height:18px;border-radius:50%;
   background:var(--gold); transform:translateY(-50%);
   box-shadow: inset 0 0 0 3px var(--maroon);
 }
-.title-banner::before{left:10px}
-.title-banner::after{right:10px}
-.title-banner span{font-size:clamp(22px, 3.4vw, 44px);font-weight:700;letter-spacing:1px;display:block;line-height:1}
-.title-banner small{display:block;font-size:clamp(13px, 1.6vw, 19px);color:#f4e0a8;margin-top:2px;font-family:'Patrick Hand',cursive}
+.title-banner::before{left:8px}
+.title-banner::after{right:8px}
+.title-banner span{font-size:clamp(20px, 2.6vw, 32px);font-weight:700;letter-spacing:1px;display:block;line-height:1}
+.title-banner small{display:block;font-size:clamp(11px, 1.2vw, 15px);color:#f4e0a8;margin-top:0;font-family:'Patrick Hand',cursive}
 
 /* ---- Board grid: canvas (square-ish) + HUD ---- */
 .board{
@@ -131,29 +131,32 @@ canvas#game{
 .card{
   background:var(--paper);
   border:2px dashed var(--ink);
-  border-radius:12px;
-  padding:8px 12px;
-  box-shadow:3px 3px 0 rgba(0,0,0,.15);
+  border-radius:10px;
+  padding:6px 10px;
+  box-shadow:2px 2px 0 rgba(0,0,0,.15);
   position:relative;
   flex-shrink:0;
 }
 .card:nth-child(odd){transform:rotate(-.6deg)}
 .card:nth-child(even){transform:rotate(.5deg)}
-.card h2{margin:0 0 4px;font-family:'Caveat',cursive;font-size:22px;color:var(--maroon);line-height:1}
+.card h2{margin:0 0 2px;font-family:'Caveat',cursive;font-size:19px;color:var(--maroon);line-height:1}
 
-.score-card p{font-family:'Special Elite',monospace;font-size:38px;margin:0;color:var(--ink);line-height:1}
-.score-card small{color:#5a432a}
+.score-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px}
+.score-card h2{grid-column:1 / -1}
+.score-card p{font-family:'Special Elite',monospace;font-size:30px;margin:0;color:var(--ink);line-height:1}
+.score-card small{color:#5a432a;text-align:right;font-size:12px}
 
-.next-card{display:flex;flex-direction:column;align-items:center;text-align:center}
+.next-card{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:8px}
+.next-card h2{grid-column:1 / -1}
 .next-card canvas{
-  width:96px;height:96px;
+  width:64px;height:64px;
   background:radial-gradient(circle,#fff8dd 0%,transparent 72%);
-  border-radius:10px;
+  border-radius:8px;
 }
-.next-card small{font-size:15px;margin-top:2px;font-style:italic}
+.next-card small{font-size:13px;font-style:italic}
 
 /* ---- Menu list ---- */
-.combo-card ol{margin:0;padding-left:20px;font-size:14px;line-height:1.4}
+.combo-card ol{margin:0;padding-left:18px;font-size:12px;line-height:1.35}
 .combo-card li{margin-bottom:1px}
 .combo-card li.cur{color:var(--maroon);font-weight:700;text-decoration:underline wavy var(--gold)}
 
@@ -164,8 +167,8 @@ canvas#game{
   padding:0;
   list-style:none;
   font-family:'Special Elite',monospace;
-  font-size:13px;
-  line-height:1.45;
+  font-size:12px;
+  line-height:1.35;
   counter-reset:rank;
 }
 .honours-list li{
@@ -209,7 +212,7 @@ canvas#game{
 }
 .ghost-btn:hover{background:rgba(200,164,74,.2)}
 
-.help-card ul{margin:0;padding-left:18px;font-size:14px;line-height:1.4}
+.help-card ul{margin:0;padding-left:16px;font-size:12px;line-height:1.35}
 kbd{
   background:#fff7df;border:1.5px solid var(--ink);border-bottom-width:3px;
   border-radius:5px;padding:0 5px;font-family:'Special Elite',monospace;font-size:12px;
@@ -305,14 +308,14 @@ kbd{
     flex-direction:row;
     flex-wrap:nowrap;
     overflow-x:auto; overflow-y:hidden;
-    max-height:32vh;
+    max-height:22vh;
     padding-bottom:4px;
   }
   .hud::-webkit-scrollbar{height:8px;width:auto}
-  .card{flex:0 0 auto;min-width:160px}
+  .card{flex:0 0 auto;min-width:140px}
   .next-card{min-width:130px}
-  .honours-card{min-width:230px}
-  .combo-card,.help-card{min-width:200px}
+  .honours-card{min-width:200px}
+  .combo-card,.help-card{min-width:180px}
   .game-wrap{height:auto;width:auto;max-height:100%;max-width:100%}
 }
 
