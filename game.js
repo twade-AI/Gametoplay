@@ -972,38 +972,215 @@
         c.fillStyle = '#c8a44a';
         c.fillRect(cx - 5, cy + 36, 10, 6);
       } else {
-        // ====== Generic stern Victorian/Edwardian headmaster ======
-        // face
-        c.fillStyle = '#d8b58c';
-        c.beginPath(); c.arc(px + 54, py + 60, 20, 0, Math.PI * 2); c.fill();
-        // hair / wig
-        c.fillStyle = '#1a1108';
-        c.beginPath();
-        c.ellipse(px + 54, py + 46, 22, 12, 0, Math.PI, 0);
-        c.fill();
+        // ====== Generic Master, varied per slot ======
+        // Each slot gets a distinct face — hair colour & style, facial hair,
+        // glasses, skin tone, gown colour, and expression — so the gallery
+        // reads as five different people.
+        const profiles = [
+          { // 0  Sholto Black 1942 — dark hair side-parted, clean-shaven, stern
+            skin:'#dbb38a', hair:'#2e1f10', hairStyle:'side-parted',
+            facialHair:'none',  glasses:false, mouth:'stern',
+            gown:'#1a1108',     collar:'high', tieColor:null,
+            faceShape:'oval',
+          },
+          { // 1  Bill Stewart 1962 — greying side-part, glasses, half-smile
+            skin:'#e8c4a0', hair:'#7a6a5a', hairStyle:'side-parted',
+            facialHair:'moustache', glasses:true,  mouth:'half-smile',
+            gown:'#2b170a',     collar:'modern', tieColor:'#3b6dc1',
+            faceShape:'round',
+          },
+          { // 2  D. Summerscale 1976 — dark wavy hair, bushy sideburns, neutral
+            skin:'#cf9b6c', hair:'#3a2412', hairStyle:'tousled',
+            facialHair:'sideburns', glasses:false, mouth:'neutral',
+            gown:'#1a1108',     collar:'modern', tieColor:'#7a1f2b',
+            faceShape:'oval',
+          },
+          { // 3  Stuart Westley 1999 — receding sandy hair, no glasses, smile
+            skin:'#dab297', hair:'#9a8366', hairStyle:'receding',
+            facialHair:'none',  glasses:false, mouth:'half-smile',
+            gown:'#2b3340',     collar:'modern', tieColor:'#6c7a4a',
+            faceShape:'long',
+          },
+          { // 4  Martin Collier 2017 — salt-and-pepper, glasses, neat beard
+            skin:'#e0bb95', hair:'#6c6660', hairStyle:'swept-back',
+            facialHair:'short-beard', glasses:true,  mouth:'smile',
+            gown:'#23272e',     collar:'modern', tieColor:'#c8a44a',
+            faceShape:'oval',
+          },
+        ];
+        const p = profiles[idx];
+        const cx = px + 54, cy = py + 62;
+
         // gown
-        c.fillStyle = '#1a1108';
+        c.fillStyle = p.gown;
         c.beginPath();
         c.moveTo(px + 22, py + 138); c.lineTo(px + 32, py + 80);
         c.lineTo(px + 76, py + 80); c.lineTo(px + 86, py + 138);
         c.closePath(); c.fill();
+
+        // gown lapels for modern collars
+        if (p.collar === 'modern') {
+          c.fillStyle = 'rgba(0,0,0,.35)';
+          c.beginPath();
+          c.moveTo(px + 38, py + 86); c.lineTo(px + 50, py + 100);
+          c.lineTo(px + 46, py + 116); c.lineTo(px + 34, py + 100);
+          c.closePath(); c.fill();
+          c.beginPath();
+          c.moveTo(px + 70, py + 86); c.lineTo(px + 58, py + 100);
+          c.lineTo(px + 62, py + 116); c.lineTo(px + 74, py + 100);
+          c.closePath(); c.fill();
+        }
+
         // collar / stock
         c.fillStyle = '#fff';
+        if (p.collar === 'high') {
+          c.beginPath();
+          c.moveTo(px + 42, py + 80); c.lineTo(px + 66, py + 80);
+          c.lineTo(px + 62, py + 96); c.lineTo(px + 46, py + 96);
+          c.closePath(); c.fill();
+        } else {
+          c.beginPath();
+          c.moveTo(px + 44, py + 82); c.lineTo(px + 64, py + 82);
+          c.lineTo(px + 60, py + 96); c.lineTo(px + 48, py + 96);
+          c.closePath(); c.fill();
+          if (p.tieColor) {
+            c.fillStyle = p.tieColor;
+            c.beginPath();
+            c.moveTo(px + 51, py + 92); c.lineTo(px + 57, py + 92);
+            c.lineTo(px + 56, py + 116); c.lineTo(px + 52, py + 116);
+            c.closePath(); c.fill();
+          }
+        }
+
+        // face
+        c.fillStyle = p.skin;
+        const fw = p.faceShape === 'round' ? 19 : (p.faceShape === 'long' ? 15 : 17);
+        const fh = p.faceShape === 'round' ? 18 : (p.faceShape === 'long' ? 22 : 20);
         c.beginPath();
-        c.moveTo(px + 44, py + 78); c.lineTo(px + 64, py + 78);
-        c.lineTo(px + 60, py + 92); c.lineTo(px + 48, py + 92);
-        c.closePath(); c.fill();
-        // expression: small mouth
-        c.strokeStyle = '#2a1a0e'; c.lineWidth = 1.5;
+        c.ellipse(cx, cy, fw, fh, 0, 0, Math.PI * 2);
+        c.fill();
+        // soft jaw shadow
+        c.fillStyle = 'rgba(110,70,30,.16)';
         c.beginPath();
-        c.moveTo(px + 47, py + 70); c.quadraticCurveTo(px + 54, py + 71, px + 61, py + 70);
+        c.ellipse(cx, cy + 6, fw - 1, fh * 0.7, 0, 0, Math.PI * 2);
+        c.fill();
+
+        // hair styles
+        c.fillStyle = p.hair;
+        if (p.hairStyle === 'side-parted') {
+          c.beginPath();
+          c.moveTo(cx - 17, cy - 10);
+          c.bezierCurveTo(cx - 19, cy - 26, cx + 2, cy - 28, cx + 8, cy - 22);
+          c.bezierCurveTo(cx + 14, cy - 26, cx + 19, cy - 14, cx + 17, cy - 6);
+          c.bezierCurveTo(cx + 12, cy - 12, cx + 4, cy - 14, cx - 4, cy - 12);
+          c.bezierCurveTo(cx - 12, cy - 10, cx - 16, cy - 6, cx - 17, cy - 10);
+          c.closePath(); c.fill();
+          // part line
+          c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(cx - 5, cy - 22); c.lineTo(cx + 5, cy - 8);
+          c.stroke();
+        } else if (p.hairStyle === 'tousled') {
+          // wavy mop
+          c.beginPath();
+          c.moveTo(cx - 18, cy - 6);
+          c.bezierCurveTo(cx - 22, cy - 24, cx - 6, cy - 30, cx, cy - 24);
+          c.bezierCurveTo(cx + 6, cy - 30, cx + 22, cy - 24, cx + 18, cy - 6);
+          c.bezierCurveTo(cx + 12, cy - 14, cx + 6, cy - 12, cx, cy - 16);
+          c.bezierCurveTo(cx - 6, cy - 12, cx - 12, cy - 14, cx - 18, cy - 6);
+          c.closePath(); c.fill();
+        } else if (p.hairStyle === 'receding') {
+          // hair only on the sides + a thin band over the temples
+          c.beginPath();
+          c.ellipse(cx - 13, cy - 7, 5, 10, -0.25, 0, Math.PI * 2);
+          c.ellipse(cx + 13, cy - 7, 5, 10, 0.25, 0, Math.PI * 2);
+          c.fill();
+          c.beginPath();
+          c.ellipse(cx, cy - 19, 7, 2.4, 0, 0, Math.PI * 2);
+          c.fill();
+        } else if (p.hairStyle === 'swept-back') {
+          c.beginPath();
+          c.moveTo(cx - 18, cy - 8);
+          c.bezierCurveTo(cx - 16, cy - 22, cx + 16, cy - 22, cx + 18, cy - 8);
+          c.bezierCurveTo(cx + 12, cy - 14, cx - 12, cy - 14, cx - 18, cy - 8);
+          c.closePath(); c.fill();
+          // swept lines
+          c.strokeStyle = 'rgba(0,0,0,.25)'; c.lineWidth = 1;
+          c.beginPath();
+          c.moveTo(cx - 10, cy - 18); c.quadraticCurveTo(cx, cy - 14, cx + 10, cy - 18);
+          c.stroke();
+        } else if (p.hairStyle === 'bald') {
+          // shiny pate — just a rim
+          c.fillStyle = 'rgba(255,255,255,.18)';
+          c.beginPath();
+          c.ellipse(cx - 4, cy - 14, 8, 3, -0.3, 0, Math.PI * 2);
+          c.fill();
+        }
+
+        // facial hair
+        if (p.facialHair === 'sideburns') {
+          c.fillStyle = p.hair;
+          c.beginPath(); c.ellipse(cx - 15, cy + 2, 4, 9, -0.25, 0, Math.PI * 2); c.fill();
+          c.beginPath(); c.ellipse(cx + 15, cy + 2, 4, 9,  0.25, 0, Math.PI * 2); c.fill();
+        } else if (p.facialHair === 'moustache') {
+          c.fillStyle = p.hair;
+          c.beginPath(); c.ellipse(cx - 4, cy + 6, 5, 1.8, -0.2, 0, Math.PI * 2); c.fill();
+          c.beginPath(); c.ellipse(cx + 4, cy + 6, 5, 1.8,  0.2, 0, Math.PI * 2); c.fill();
+        } else if (p.facialHair === 'short-beard') {
+          c.fillStyle = p.hair;
+          c.beginPath();
+          c.moveTo(cx - 13, cy + 4);
+          c.bezierCurveTo(cx - 15, cy + 14, cx - 4, cy + 19, cx, cy + 19);
+          c.bezierCurveTo(cx + 4, cy + 19, cx + 15, cy + 14, cx + 13, cy + 4);
+          c.bezierCurveTo(cx + 8, cy + 8, cx - 8, cy + 8, cx - 13, cy + 4);
+          c.closePath(); c.fill();
+          // moustache joining the beard
+          c.beginPath();
+          c.ellipse(cx - 4, cy + 4, 4, 1.6, -0.2, 0, Math.PI * 2);
+          c.ellipse(cx + 4, cy + 4, 4, 1.6,  0.2, 0, Math.PI * 2);
+          c.fill();
+        }
+
+        // mouth
+        c.strokeStyle = '#3a1e0c'; c.lineWidth = 1.6;
+        c.beginPath();
+        if (p.mouth === 'stern') {
+          c.moveTo(cx - 5, cy + 8); c.lineTo(cx + 5, cy + 8);
+        } else if (p.mouth === 'half-smile') {
+          c.moveTo(cx - 5, cy + 7); c.quadraticCurveTo(cx, cy + 11, cx + 5, cy + 7);
+        } else if (p.mouth === 'smile') {
+          c.moveTo(cx - 6, cy + 6); c.quadraticCurveTo(cx, cy + 12, cx + 6, cy + 6);
+        } else { // neutral
+          c.moveTo(cx - 5, cy + 8); c.quadraticCurveTo(cx, cy + 9, cx + 5, cy + 8);
+        }
         c.stroke();
-        // record eye centres (drawn each frame)
+
+        // eyebrows (use hair colour, slightly bushy variation)
+        c.strokeStyle = p.hair; c.lineWidth = 1.7;
+        c.beginPath();
+        c.moveTo(cx - 11, cy - 7); c.quadraticCurveTo(cx - 6, cy - 9, cx - 2, cy - 7);
+        c.moveTo(cx + 2, cy - 7);  c.quadraticCurveTo(cx + 6, cy - 9, cx + 11, cy - 7);
+        c.stroke();
+
+        // glasses overlay
+        if (p.glasses) {
+          c.strokeStyle = '#1a1108'; c.lineWidth = 1.6;
+          c.beginPath();
+          c.arc(cx - 7, cy - 2, 4.6, 0, Math.PI * 2);
+          c.arc(cx + 7, cy - 2, 4.6, 0, Math.PI * 2);
+          c.moveTo(cx - 2.4, cy - 2); c.lineTo(cx + 2.4, cy - 2);
+          c.moveTo(cx - 11.6, cy - 2); c.lineTo(cx - 16, cy - 1);
+          c.moveTo(cx + 11.6, cy - 2); c.lineTo(cx + 16, cy - 1);
+          c.stroke();
+        }
+
+        // record eye centres (eyes drawn per frame, follow ladle)
         portraitEyes.push({
           mrWade: false,
-          ex: px + 47, ey: py + 58,
-          lx: px + 61, ly: py + 58,
+          ex: cx - 7, ey: cy - 2,
+          lx: cx + 7, ly: cy - 2,
           maxShift: 1.4,
+          glasses: p.glasses,
         });
       }
 
@@ -2216,15 +2393,18 @@
       const rd = Math.max(1, Math.hypot(rdx, rdy));
       const rex = e.lx + (rdx / rd) * e.maxShift;
       const rey = e.ly + (rdy / rd) * e.maxShift;
-      // sclera (whites) — only for Mr Wade who has glasses; the others have just dots
-      if (e.mrWade) {
+      // glasses-wearers get visible eye-whites behind the lens; bare-eyed
+      // portraits just get dark pupils on the skin so the variety reads.
+      const showSclera = e.mrWade || e.glasses;
+      if (showSclera) {
         ctx.fillStyle = '#fbf2d4';
-        ctx.beginPath(); ctx.arc(e.ex, e.ey, 2.6, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.arc(e.lx, e.ly, 2.6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(e.ex, e.ey, 2.8, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(e.lx, e.ly, 2.8, 0, Math.PI * 2); ctx.fill();
       }
       ctx.fillStyle = '#1a1108';
-      ctx.beginPath(); ctx.arc(lex, ley, e.mrWade ? 1.8 : 1.6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(rex, rey, e.mrWade ? 1.8 : 1.6, 0, Math.PI * 2); ctx.fill();
+      const pupilR = showSclera ? 1.8 : 1.6;
+      ctx.beginPath(); ctx.arc(lex, ley, pupilR, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(rex, rey, pupilR, 0, Math.PI * 2); ctx.fill();
     }
   }
 
