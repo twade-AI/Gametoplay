@@ -2198,14 +2198,12 @@
     if (s < 1 / 90) return APPLE_TIER;   // ~1 in 90 drops
     if (s < 1 / 90 + 1 / 110) return BOMB_TIER; // ~1 in 110 drops
 
-    // The drop pool widens as the player climbs the menu. Once you've made
-    // a Sunday Roast (tier 7), Yorkshire Puds start appearing in the ladle;
-    // sticky-toffee unlocks Jackets, Christmas pud unlocks Roasts. We cap
-    // the pool at tier 7 so the final stretch to Trifle still requires
-    // genuine merging rather than being handed out for free.
-    const maxDrop = Math.max(4, Math.min(7, highestTier - 2));
+    // The ladle only ever drops tiers 0–4 (Pea, Bean, Crouton, Battered
+    // Fish, Grubber Cookie). Everything above tier 4 must be earned by
+    // merging, so the climb to Trifle stays a genuine puzzle.
+    const maxDrop = 4;
     // Weighted bias — small tiers stay the bread-and-butter of the ladle.
-    const weights = [40, 28, 16, 9, 5, 3, 2, 1].slice(0, maxDrop + 1);
+    const weights = [40, 28, 16, 9, 5].slice(0, maxDrop + 1);
     let total = 0;
     for (const w of weights) total += w;
     let pick = Math.random() * total;
