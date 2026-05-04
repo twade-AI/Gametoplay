@@ -686,9 +686,21 @@
   const portraitEyes = [];
   const bg = document.createElement('canvas');
   bg.width = W; bg.height = H;
+
+  // Mr Wade's portrait is the only one painted from life. The headshot is
+  // drawn into the bottom-right portrait frame as soon as it loads — until
+  // then we render the procedural fallback so the hall isn't blank.
+  const headshotImg = new Image();
+  headshotImg.src = 'Headshot.jpg';
+  headshotImg.onload = () => paintHall(bg.getContext('2d'));
+
   paintHall(bg.getContext('2d'));
 
   function paintHall(c) {
+    // Reset eye registry — paintHall may run twice (once before the headshot
+    // loads, once after) and we don't want stale entries doubling up.
+    portraitEyes.length = 0;
+    c.clearRect(0, 0, W, H);
     // ============================
     // BARREL-VAULTED DOME (top ~220px) — based on Haileybury dining hall reference
     // ============================
@@ -903,9 +915,35 @@
       c.fillStyle = canvasGrad;
       c.fillRect(px + 11, py + 11, 86, 128);
 
-      if (idx === 5) {
-        // ====== MR WADE — present-day headmaster ======
-        // (the only portrait painted from life, hanging in pride of place)
+      if (idx === 5 && headshotImg.complete && headshotImg.naturalWidth > 0) {
+        // ====== MR WADE — actual headshot, painted from life ======
+        // Draw the photo into the canvas area of the frame using a centred
+        // "cover" crop so the face fills the portrait without distortion.
+        const fx = px + 11, fy = py + 11, fw = 86, fh = 128;
+        const iw = headshotImg.naturalWidth, ih = headshotImg.naturalHeight;
+        const targetAspect = fw / fh;
+        const srcAspect = iw / ih;
+        let sx, sy, sw, sh;
+        if (srcAspect > targetAspect) {
+          // photo wider than frame — crop sides
+          sh = ih;
+          sw = ih * targetAspect;
+          sx = (iw - sw) / 2;
+          sy = 0;
+        } else {
+          // photo taller than frame — crop top/bottom (favour the face,
+          // which sits in the upper third)
+          sw = iw;
+          sh = iw / targetAspect;
+          sx = 0;
+          sy = Math.max(0, (ih - sh) * 0.18);
+        }
+        c.drawImage(headshotImg, sx, sy, sw, sh, fx, fy, fw, fh);
+        // subtle warm overlay so the photo sits with the painted portraits
+        c.fillStyle = 'rgba(80,40,10,.08)';
+        c.fillRect(fx, fy, fw, fh);
+      } else if (idx === 5) {
+        // ====== MR WADE — procedural fallback while the photo loads ======
         const cx = px + 54, cy = py + 62;
         // shoulders / open-collar dark blazer
         c.fillStyle = '#1f2a3a';
