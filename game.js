@@ -72,12 +72,13 @@
     ro.observe(document.body);
   }
 
-  // Play-field geometry (the bowl). Sized so two of every tier except the
-  // final Trifle just fit across — tight, but no tier is impossible.
-  const PLAY_LEFT   = 200;
-  const PLAY_RIGHT  = 700;
+  // Play-field geometry (the bowl). Halved in size from the original layout
+  // so the bowl fills up much faster — only one Trifle fits, larger tiers
+  // must be stacked vertically rather than side-by-side.
+  const PLAY_LEFT   = 275;
+  const PLAY_RIGHT  = 625;
   const PLAY_TOP    = 240;
-  const PLAY_BOTTOM = 928;
+  const PLAY_BOTTOM = 720;
   const DANGER_Y    = 298;
   const LADLE_Y     = 200;
 
@@ -92,8 +93,10 @@
   }
 
   // ----- Hand-drawn helpers -------------------------------------------------
-  function inkOutline(ctx, w = 2.6) {
-    ctx.strokeStyle = '#2a1a0e';
+  // Comic-book ink: thick, near-black outlines on every dish so they read
+  // instantly against the background.
+  function inkOutline(ctx, w = 4) {
+    ctx.strokeStyle = '#120802';
     ctx.lineWidth = w;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
@@ -161,19 +164,19 @@
   const FOODS = [
     { // 0
       name: 'Garden Pea',
-      radius: 16, color: "#7fb83a",
+      radius: 16, color: "#5fd400",
       draw(ctx, r, seed) {
-        ctx.fillStyle = this.color; inkOutline(ctx, 2.2);
+        ctx.fillStyle = this.color; inkOutline(ctx, 3);
         wobblyCircle(ctx, 0, 0, r, seed);
-        ctx.fillStyle = '#bcdd7e';
+        ctx.fillStyle = '#d6ff7a';
         ctx.beginPath();
-        ctx.ellipse(-r * 0.35, -r * 0.4, r * 0.35, r * 0.16, -0.5, 0, Math.PI * 2);
+        ctx.ellipse(-r * 0.35, -r * 0.4, r * 0.4, r * 0.18, -0.5, 0, Math.PI * 2);
         ctx.fill();
       },
     },
     { // 1
       name: 'Baked Bean',
-      radius: 26, color: "#d2632b",
+      radius: 26, color: "#ff5a14",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         ctx.beginPath();
@@ -182,15 +185,15 @@
         ctx.bezierCurveTo(r * 0.95, r * 0.95, r * 0.4, r * 0.45, 0, r * 0.55);
         ctx.bezierCurveTo(-r * 0.4, r * 0.45, -r * 0.95, r * 0.95, -r * 0.95, 0);
         ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#f0a268';
+        ctx.fillStyle = '#ffc888';
         ctx.beginPath();
-        ctx.ellipse(-r * 0.2, -r * 0.45, r * 0.35, r * 0.11, -0.3, 0, Math.PI * 2);
+        ctx.ellipse(-r * 0.2, -r * 0.45, r * 0.4, r * 0.13, -0.3, 0, Math.PI * 2);
         ctx.fill();
       },
     },
     { // 2
       name: 'Crusty Crouton',
-      radius: 38, color: "#e7b864",
+      radius: 38, color: "#f5c455",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         // soft pillow / pebble — generous corner radius keeps it round on contact
@@ -213,32 +216,66 @@
       },
     },
     { // 3
-      name: 'Fish Finger',
-      radius: 52, color: "#d8a44b",
+      name: 'Battered Fish',
+      radius: 52, color: "#ffc14a",
       draw(ctx, r, seed) {
-        ctx.fillStyle = this.color; inkOutline(ctx);
-        // proper pill shape — full semi-circle ends, sits inside the physics circle
-        const w = r * 0.92, h = r * 0.7;
-        roundedRect(ctx, w, h, h);   // cr = h → fully rounded ends
-        ctx.fill(); ctx.stroke();
-        // breadcrumb texture
+        // Whole battered cod fillet: chunky teardrop body with a forked tail.
+        // The fattest point sits inside the physics circle so contact reads
+        // correctly even though the silhouette is non-circular.
         const rng = mulberry(seed);
-        ctx.fillStyle = '#5a3413';
-        for (let i = 0; i < 28; i++) {
+        ctx.fillStyle = this.color; inkOutline(ctx);
+
+        // body — wide head end (left) tapering to the tail join (right)
+        ctx.beginPath();
+        ctx.moveTo(-r * 0.92, -r * 0.05);                          // nose top
+        ctx.bezierCurveTo(-r * 0.85, -r * 0.7, r * 0.45, -r * 0.62, r * 0.55, -r * 0.32);
+        ctx.lineTo(r * 0.62, -r * 0.18);                           // tail root upper
+        ctx.lineTo(r * 0.62, r * 0.18);                            // tail root lower
+        ctx.bezierCurveTo(r * 0.45, r * 0.62, -r * 0.85, r * 0.7, -r * 0.92, r * 0.05);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // tail — forked triangle out the right side
+        ctx.fillStyle = '#e89a1a';
+        ctx.beginPath();
+        ctx.moveTo(r * 0.6, -r * 0.22);
+        ctx.lineTo(r * 0.98, -r * 0.5);
+        ctx.lineTo(r * 0.86, -r * 0.05);
+        ctx.lineTo(r * 0.98, r * 0.5);
+        ctx.lineTo(r * 0.6, r * 0.22);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+
+        // crispy batter craters/ripples — knobbly outer edge details
+        ctx.fillStyle = '#d97e10';
+        for (let i = 0; i < 18; i++) {
+          const a = rng() * Math.PI * 2;
+          const d = (0.45 + rng() * 0.4) * r;
+          const x = Math.cos(a) * d * 0.95;
+          const y = Math.sin(a) * d * 0.6;
           ctx.beginPath();
-          ctx.arc(-w + rng() * w * 2, -h + rng() * h * 2, 1.4 + rng() * 0.8, 0, Math.PI * 2);
+          ctx.arc(x, y, 1.6 + rng() * 1.4, 0, Math.PI * 2);
           ctx.fill();
         }
-        // batter highlight
-        ctx.fillStyle = '#f6dfa3';
+
+        // golden highlight along the top — wet, glossy batter
+        ctx.fillStyle = '#fff0a8';
         ctx.beginPath();
-        ctx.ellipse(-w * 0.25, -h * 0.55, w * 0.55, h * 0.18, 0, 0, Math.PI * 2);
+        ctx.ellipse(-r * 0.15, -r * 0.42, r * 0.55, r * 0.1, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // little eye dot near the head
+        ctx.fillStyle = '#1a0d04';
+        ctx.beginPath();
+        ctx.arc(-r * 0.62, -r * 0.18, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(-r * 0.6, -r * 0.2, 0.9, 0, Math.PI * 2);
         ctx.fill();
       },
     },
     { // 4
       name: 'Cocktail Sausage',
-      radius: 66, color: "#c97e64",
+      radius: 66, color: "#ff6a4a",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         // chubby pill — fits inside the physics circle
@@ -262,19 +299,19 @@
     },
     { // 5
       name: 'Yorkshire Pudding',
-      radius: 80, color: "#dba85d",
+      radius: 80, color: "#ffb338",
       draw(ctx, r, seed) {
         // outer rim
-        ctx.fillStyle = '#c0823f'; inkOutline(ctx);
+        ctx.fillStyle = '#c97a1a'; inkOutline(ctx);
         wobblyCircle(ctx, 0, r * 0.05, r * 0.96, seed);
         // inner crater
         ctx.fillStyle = this.color;
         wobblyCircle(ctx, 0, -r * 0.03, r * 0.7, seed + 9);
         // gravy pool
-        ctx.fillStyle = '#5b3416';
+        ctx.fillStyle = '#3d1e08';
         wobblyCircle(ctx, 0, 0, r * 0.42, seed + 21, true, false);
         // gravy gloss
-        ctx.fillStyle = '#7a4a1f';
+        ctx.fillStyle = '#a06022';
         ctx.beginPath();
         ctx.ellipse(-r * 0.12, -r * 0.06, r * 0.2, r * 0.07, -0.3, 0, Math.PI * 2);
         ctx.fill();
@@ -285,7 +322,7 @@
     },
     { // 6
       name: 'Jacket Potato',
-      radius: 92, color: "#a26a32",
+      radius: 92, color: "#cf7d24",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         const rng = mulberry(seed);
@@ -316,7 +353,7 @@
     },
     { // 7
       name: 'Sunday Roast Chicken',
-      radius: 102, color: "#d6a25b",
+      radius: 102, color: "#f0a02c",
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         ctx.beginPath();
@@ -364,12 +401,12 @@
         ctx.fillStyle = this.color; inkOutline(ctx);
         wobblyCircle(ctx, 0, r * 0.12, r * 0.84, seed);
         // top dome
-        ctx.fillStyle = '#7a4422';
+        ctx.fillStyle = '#a05a26';
         ctx.beginPath();
         ctx.ellipse(0, -r * 0.08, r * 0.78, r * 0.45, 0, 0, Math.PI * 2);
         ctx.fill(); ctx.stroke();
         // toffee drizzle
-        ctx.fillStyle = '#c98637';
+        ctx.fillStyle = '#ffa537';
         ctx.beginPath();
         ctx.moveTo(-r * 0.7, -r * 0.05);
         ctx.bezierCurveTo(-r * 0.5, -r * 0.3, -r * 0.2, r * 0.1, r * 0.05, -r * 0.2);
@@ -1294,7 +1331,15 @@
   Events.on(engine, 'collisionStart', (e) => {
     for (const pair of e.pairs) {
       const a = pair.bodyA, b = pair.bodyB;
-      if (a.label !== 'food' || b.label !== 'food') continue;
+      // food-vs-wall: a quick bouncy "boing" so the bowl feels physical
+      if (a.label !== 'food' || b.label !== 'food') {
+        const food = a.label === 'food' ? a : (b.label === 'food' ? b : null);
+        if (food) {
+          const v = Math.hypot(food.velocity.x, food.velocity.y);
+          if (v > 2.5) playBounce(Math.min(1, v / 8));
+        }
+        continue;
+      }
 
       // ----- contact "thump": squish both bodies and add a tiny shake on
       //       hard impacts. Runs even if no merge happens, so every collision
@@ -1308,6 +1353,8 @@
       if (impact > 0.5 && (a.tier >= 6 || b.tier >= 6)) {
         addShake(impact * 4);
         playThud();
+      } else if (impact > 0.35) {
+        playPop(Math.min(a.tier, b.tier));
       }
 
       if (merging.has(a.id) || merging.has(b.id)) continue;
@@ -1331,17 +1378,17 @@
         merging.add(apple.id); merging.add(other.id);
         if (other.tier === APPLE_TIER) {
           // Two apples — pure-gold bonus
-          score += 500;
+          score += 300;
           burstParticles(cx, cy, '#fff5b8', 40, 6);
           burstParticles(cx, cy, '#c8a44a', 28, 5);
           playFanfare();
-          showFlash('Two golden apples! +500');
+          showFlash('Two golden apples! +300');
           removeBody(apple); removeBody(other);
           continue;
         }
         // Normal target — bump it up
         const next = Math.min(NORMAL_TIERS - 1, other.tier + 1);
-        const bonus = 50 + (next + 1) * 12;
+        const bonus = 30 + next * 10;
         const mult = registerCombo(`Golden +${bonus}`);
         score += bonus * mult;
         if (next > highestTier) { highestTier = next; updateMenuHighlight(); }
@@ -1363,19 +1410,23 @@
 
       if (a.tier >= NORMAL_TIERS - 1) {
         // Two trifles! ascend to glory
-        score += 1000;
+        score += 800;
         burstParticles(cx, cy, '#c8a44a', 36, 6);
         burstParticles(cx, cy, '#7a1f2b', 24, 5);
-        playFanfare();
-        showFlash('A double Trifle! +1000');
+        playTrifle();
+        showFlash('A double Trifle! +800');
         addShake(8);
         removeBody(a); removeBody(b);
         continue;
       }
       const next = a.tier + 1;
-      const base = (next + 1) * (next + 2) / 2 * 5;
+      // Flatter, more linear scoring: top tiers no longer dwarf early ones,
+      // so a long careful run feels valued rather than out-shone by a single
+      // late-game merge.
+      const base = 15 + next * 12;
       const mult = registerCombo(MERGE_QUIPS[next]);
       score += base * mult;
+      if (next === NORMAL_TIERS - 1) playTrifle();
       if (next > highestTier) { highestTier = next; updateMenuHighlight(); }
       removeBody(a); removeBody(b);
       const nb = spawnAt(next, cx, cy);
@@ -1434,8 +1485,11 @@
   // PARTICLES
   // ============================================================
   const particles = [];
+  // Hard cap so a flurry of merges or chained bombs can't OOM the page.
+  const MAX_PARTICLES = 500;
   function burstParticles(x, y, color, count, speed) {
     for (let i = 0; i < count; i++) {
+      if (particles.length >= MAX_PARTICLES) particles.shift();
       const a = Math.random() * Math.PI * 2;
       const s = (0.5 + Math.random()) * speed;
       particles.push({
@@ -1481,9 +1535,18 @@
     }
     return audioCtx;
   }
+  // Track recently-fired tones so a flurry of merges can't spawn hundreds of
+  // simultaneous oscillators (which has crashed Safari for high-combo runs).
+  const _toneStamps = [];
+  const TONE_BUDGET = 18;          // max tones in the sliding window
+  const TONE_WINDOW_MS = 220;
   function tone(freq, dur = 0.12, type = 'sine', vol = 0.18) {
     if (muted) return;
     const a = ac(); if (!a) return;
+    const now = performance.now();
+    while (_toneStamps.length && now - _toneStamps[0] > TONE_WINDOW_MS) _toneStamps.shift();
+    if (_toneStamps.length >= TONE_BUDGET) return;
+    _toneStamps.push(now);
     const o = a.createOscillator(); const g = a.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, a.currentTime);
     g.gain.setValueAtTime(0, a.currentTime);
@@ -1543,13 +1606,53 @@
     if (muted) return;
     [880, 1320, 1760].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'triangle', 0.14), i * 50));
   }
+  // Bouncy "boing" when a fresh dish smacks the side of the bowl.
+  function playBounce(impact) {
+    if (muted) return;
+    const f = 180 + Math.random() * 60;
+    tone(f, 0.06, 'square', 0.06 + Math.min(0.1, impact * 0.06));
+  }
+  // Splat-pop on small-tier merges — wet, low, immediate.
+  function playPop(tier) {
+    if (muted) return;
+    const f = 320 - Math.min(180, tier * 18);
+    tone(f, 0.07, 'square', 0.12);
+    setTimeout(() => tone(f * 0.6, 0.05, 'sine', 0.08), 30);
+  }
+  // Pigeon: comedic two-note coo as it flaps onto the screen.
+  function playPigeon() {
+    if (muted) return;
+    tone(620, 0.12, 'sine', 0.1);
+    setTimeout(() => tone(520, 0.18, 'sine', 0.12), 130);
+  }
+  // Combo escalator — pitch rises with the multiplier so a long chain
+  // sounds genuinely thrilling.
+  function playCombo(mult) {
+    if (muted) return;
+    const base = 440 * Math.pow(1.12, mult);
+    tone(base, 0.08, 'square', 0.14);
+    setTimeout(() => tone(base * 1.5, 0.08, 'triangle', 0.1), 60);
+  }
+  // Soft UI click for buttons and overlay actions.
+  function playClick() {
+    if (muted) return;
+    tone(700, 0.04, 'square', 0.1);
+    setTimeout(() => tone(1200, 0.04, 'sine', 0.08), 35);
+  }
+  // Big triumphant fanfare reserved for the Trifle.
+  function playTrifle() {
+    if (muted) return;
+    [523, 659, 784, 1047, 1319].forEach((f, i) =>
+      setTimeout(() => tone(f, 0.22, 'triangle', 0.22), i * 110));
+    setTimeout(() => tone(2093, 0.4, 'sine', 0.2), 600);
+  }
 
   // ============================================================
   // STATE
   // ============================================================
   const MERGE_QUIPS = {
     2: 'A crouton! Crunchy.',
-    3: 'A fish finger appears!',
+    3: 'Battered fish — fresh from the fryer!',
     5: 'A perfect Yorkshire — mind the gravy!',
     6: 'Behold, the jacket potato!',
     7: 'Sunday roast is served!',
@@ -1637,7 +1740,7 @@
   }
   // Initial render so the HUD card shows the board on page load
   renderHonours();
-  document.getElementById('resetBoard').addEventListener('click', clearBoard);
+  document.getElementById('resetBoard').addEventListener('click', () => { playClick(); clearBoard(); });
 
   // ---- Combo system (chained merges within COMBO_WINDOW ms) --------------
   const COMBO_WINDOW = 1700;
@@ -1652,6 +1755,7 @@
       const labels = ['', '', 'TWO!', 'THREE!', 'FOUR! ON FIRE', 'FIVE!! GLORIOUS', 'SIX!!! UNHEARD OF', 'COMBO X' + comboMultiplier];
       showFlash(`x${comboMultiplier} ${labels[Math.min(comboMultiplier, labels.length - 1)] || ''}`.trim());
       playSparkle();
+      playCombo(comboMultiplier);
     } else if (quip) {
       showFlash(quip);
     }
@@ -1697,6 +1801,7 @@
     pigeon.vx = fromLeft ? 3.2 : -3.2;
     pigeon.holding = null;
     nextPigeonAt = performance.now() + 28000 + Math.random() * 18000;
+    playPigeon();
   }
   function updatePigeon(dt) {
     if (!pigeon.active) return;
@@ -1977,6 +2082,7 @@
   let lastEntry = null;
 
   document.getElementById('ovBtn').addEventListener('click', () => {
+    playClick();
     if (gameOverPhase === 'enter-name') {
       // Save the score, then show the leaderboard view
       const nameInput = document.getElementById('ovName');
@@ -1997,7 +2103,7 @@
     if (!started || gameOver) reset();
     else { paused = false; hideOverlay(); canvas.focus(); }
   });
-  document.getElementById('ovPhotoBtn').addEventListener('click', exportPhoto);
+  document.getElementById('ovPhotoBtn').addEventListener('click', () => { playClick(); exportPhoto(); });
   // Pressing Enter in the name field acts like clicking the button
   document.getElementById('ovName').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -2309,7 +2415,7 @@
     : 'Use <b>← / →</b> (or <b>A / D</b>) to slide the ladle, then <b>Space</b> or <b>↓</b> to drop.';
   showOverlay(
     'The Haileybury Dining Hall',
-    `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, fish fingers, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
+    `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, battered fish, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
     'Start Dinner',
     { showBoard: leaderboard.length > 0 },
   );
