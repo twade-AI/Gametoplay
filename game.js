@@ -278,27 +278,32 @@
       },
     },
     { // 4
-      name: 'Cocktail Sausage',
-      radius: 66, color: "#ff6a4a",
+      name: 'Grubber Cookie',
+      radius: 66, color: "#c97a30",
+      image: 'assets/cookie.webp',
       draw(ctx, r, seed) {
+        // procedural fallback — round chocolate-chip cookie
         ctx.fillStyle = this.color; inkOutline(ctx);
-        // chubby pill — fits inside the physics circle
-        const w = r * 0.92, h = r * 0.68;
-        roundedRect(ctx, w, h, h);
-        ctx.fill(); ctx.stroke();
-        // wrinkle creases
-        ctx.lineWidth = 1.6; ctx.strokeStyle = '#5a2a1b';
-        for (let i = -2; i <= 2; i++) {
-          ctx.beginPath();
-          ctx.moveTo(i * r * 0.3, -h * 0.62);
-          ctx.quadraticCurveTo(i * r * 0.3 + 2.5, 0, i * r * 0.3, h * 0.62);
-          ctx.stroke();
-        }
-        // glossy highlight
-        ctx.fillStyle = 'rgba(255,220,200,.55)';
+        wobblyCircle(ctx, 0, 0, r * 0.94, seed);
+        // baked sheen
+        ctx.fillStyle = 'rgba(255,225,170,.55)';
         ctx.beginPath();
-        ctx.ellipse(-r * 0.3, -h * 0.7, r * 0.55, h * 0.16, 0, 0, Math.PI * 2);
+        ctx.ellipse(-r * 0.3, -r * 0.4, r * 0.45, r * 0.13, -0.2, 0, Math.PI * 2);
         ctx.fill();
+        // chocolate chips
+        ctx.fillStyle = '#3a1e0c';
+        const rng = mulberry(seed + 17);
+        const chips = 9;
+        for (let i = 0; i < chips; i++) {
+          const a = rng() * Math.PI * 2;
+          const d = rng() * r * 0.7;
+          const cx = Math.cos(a) * d, cy = Math.sin(a) * d;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, 5.5 + rng() * 1.2, 4.5 + rng() * 1.0, rng() * Math.PI, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // crumb specks
+        speckle(ctx, 0, 0, r * 0.78, seed + 5, 24, '#7a4a1f');
       },
     },
     { // 5
@@ -403,6 +408,7 @@
     { // 8
       name: 'Sticky Toffee Pudding',
       radius: 110, color: "#5a2f15",
+      image: 'assets/sticky.webp',
       draw(ctx, r, seed) {
         // base
         ctx.fillStyle = this.color; inkOutline(ctx);
@@ -495,6 +501,7 @@
     { // 10  THE TRIFLE
       name: 'The Haileybury Trifle',
       radius: 122, color: "#fff7e0",
+      image: 'assets/trifle.webp',
       draw(ctx, r, seed) {
         // glass bowl
         ctx.fillStyle = 'rgba(255,255,255,.55)'; inkOutline(ctx, 3);
@@ -1959,6 +1966,7 @@
   const MERGE_QUIPS = {
     2: 'A crouton! Crunchy.',
     3: 'Battered fish — fresh from the fryer!',
+    4: 'A Grubber Cookie — straight from the tuck shop!',
     5: 'A perfect Yorkshire — mind the gravy!',
     6: 'Behold, the jacket potato!',
     7: 'Sunday roast is served!',
@@ -2761,7 +2769,7 @@
     : 'Use <b>← / →</b> (or <b>A / D</b>) to slide the ladle, then <b>Space</b> or <b>↓</b> to drop.';
   showOverlay(
     'The Haileybury Dining Hall',
-    `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, battered fish, sausages, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
+    `Drop the food into the bowl. Match two of the same to grow it into the next dish.<br/>Climb the menu — peas, beans, croutons, battered fish, Grubber cookies, Yorkshires, jackets, roasts, sticky toffee, flaming Christmas pud, and finally <b>The Haileybury Trifle</b>.<br/><br/>${controlsHint}<br/><br/><i>Sursum Corda — lift up your plates!</i>`,
     'Start Dinner',
     { showBoard: leaderboard.length > 0 },
   );
