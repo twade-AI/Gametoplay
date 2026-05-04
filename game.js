@@ -1506,6 +1506,10 @@
     body.tier = tier;
     body.spawnedAt = performance.now();
     body.squash = 0;
+    // Food spawns above the rim (in the chute under the ladle) and only
+    // becomes "in play" once it's dropped past the danger line. After that
+    // any return above the rim is an instant game over.
+    body.hasEnteredBowl = false;
     items.add(body);
     World.add(world, body);
     return body;
@@ -1543,17 +1547,32 @@
     World.remove(world, b);
   }
 
+  // Throttle: only this many merges/explosions handled per physics step.
+  // Any extras (e.g. a chained cascade after a bomb in a packed bowl) get
+  // deferred to the next collision event so we don't spend a single frame
+  // spawning dozens of bodies, particles and audio nodes — which is what
+  // tipped the page into a crash on long combo runs.
+  const MAX_MERGES_PER_EVENT = 6;
+  let _wallBounceBudget = 0;       // limit wall-bounce SFX per frame too
+
   Events.on(engine, 'collisionStart', (e) => {
+    let mergesThisEvent = 0;
+    _wallBounceBudget = 6;
     for (const pair of e.pairs) {
       const a = pair.bodyA, b = pair.bodyB;
       // food-vs-wall: a quick bouncy "boing" so the bowl feels physical
       if (a.label !== 'food' || b.label !== 'food') {
         const food = a.label === 'food' ? a : (b.label === 'food' ? b : null);
-        if (food) {
+        if (food && _wallBounceBudget > 0) {
           const v = Math.hypot(food.velocity.x, food.velocity.y);
-          if (v > 2.5) playBounce(Math.min(1, v / 8));
+          if (v > 2.5) { playBounce(Math.min(1, v / 8)); _wallBounceBudget--; }
         }
         continue;
+      }
+      if (mergesThisEvent >= MAX_MERGES_PER_EVENT) {
+        // Cap reached for this frame — let everything else settle and merge
+        // on the next physics tick.
+        break;
       }
 
       // ----- contact "thump": squish both bodies and add a tiny shake on
@@ -1583,6 +1602,7 @@
         const other = a.tier === BOMB_TIER ? b : a;
         merging.add(bomb.id); merging.add(other.id);
         explodeBomb(bomb, other);
+        mergesThisEvent += 3;          // a bomb counts as several merges
         continue;
       }
 
@@ -1599,6 +1619,7 @@
           playFanfare();
           showFlash('Two golden apples! +300');
           removeBody(apple); removeBody(other);
+          mergesThisEvent++;
           continue;
         }
         // Normal target — bump it up
@@ -1614,6 +1635,7 @@
         burstParticles(cx, cy, FOODS[next].color, 14, 3);
         playMerge(next);
         addShake(3);
+        mergesThisEvent++;
         continue;
       }
 
@@ -1632,6 +1654,7 @@
         showFlash('A double Trifle! +800');
         addShake(8);
         removeBody(a); removeBody(b);
+        mergesThisEvent += 2;
         continue;
       }
       const next = a.tier + 1;
@@ -1654,6 +1677,7 @@
         addShake(2 + next * 0.6);
         chandelier.swayVel += (Math.random() - 0.5) * (0.06 + next * 0.012);
       }
+      mergesThisEvent++;
     }
   });
 
@@ -2020,10 +2044,12 @@
     get() { return chandelier.vel; },
   });
   function updateChandelier(dt) {
-    // simple damped harmonic motion: pendulum
+    // simple damped harmonic motion: pendulum (with vel/angle hard caps so a
+    // freak run of big merges can't push it into NaN/inf territory)
     const k = 6, damp = 1.4;
     chandelier.vel += -k * chandelier.angle * dt - damp * chandelier.vel * dt;
-    chandelier.angle += chandelier.vel * dt;
+    chandelier.vel = Math.max(-1.2, Math.min(1.2, chandelier.vel));
+    chandelier.angle = Math.max(-0.6, Math.min(0.6, chandelier.angle + chandelier.vel * dt));
   }
 
   // ---- The Pigeon (occasional comedic visitor) ---------------------------
@@ -2407,37 +2433,42 @@
   // GAME OVER detection
   // ============================================================
   function checkGameOver(dt) {
-    let overLine = false;
     for (const b of items) {
-      const top = b.position.y - FOODS[b.tier].radius;
-      const v = Math.hypot(b.velocity.x, b.velocity.y);
-      const age = (performance.now() - b.spawnedAt) / 1000;
-      // give freshly-dropped pieces a grace period
-      if (top < DANGER_Y && v < 0.6 && age > 1.5) { overLine = true; break; }
-    }
-    if (overLine) {
-      if (dangerStart === 0) dangerStart = performance.now();
-      else if (performance.now() - dangerStart > 1500) {
-        gameOver = true;
-        if (score > best) {
-          best = score;
-          localStorage.setItem('haileybury-dining-best', String(best));
-        }
-        playGameOver();
-        gameOverPhase = 'enter-name';
-        const isBest = score >= (leaderboard[0]?.score || 0) && score > 0;
-        const beatPersonal = score > best;
-        const head = isBest ? 'A new High Score!' : (beatPersonal ? 'A personal best!' : 'The bowl runneth over!');
-        showOverlay(
-          head,
-          `Add your name to the <b>Honours Board</b> to record your score.`,
-          'Submit score',
-          { showScoreBox: true },
-        );
+      const r = FOODS[b.tier].radius;
+      const top = b.position.y - r;
+      // Mark a piece as "in play" once it has fallen well past the rim
+      // (its top edge has cleared the danger line). After that, ANY
+      // re-emergence above the rim is an instant game over.
+      if (!b.hasEnteredBowl) {
+        if (top > DANGER_Y) b.hasEnteredBowl = true;
+        continue;
       }
-    } else {
-      dangerStart = 0;
+      if (top < DANGER_Y) {
+        triggerGameOver();
+        return;
+      }
     }
+  }
+
+  function triggerGameOver() {
+    if (gameOver) return;
+    gameOver = true;
+    dangerStart = 0;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('haileybury-dining-best', String(best));
+    }
+    playGameOver();
+    gameOverPhase = 'enter-name';
+    const isBest = score >= (leaderboard[0]?.score || 0) && score > 0;
+    const beatPersonal = score > best;
+    const head = isBest ? 'A new High Score!' : (beatPersonal ? 'A personal best!' : 'The bowl runneth over!');
+    showOverlay(
+      head,
+      `Add your name to the <b>Honours Board</b> to record your score.`,
+      'Submit score',
+      { showScoreBox: true },
+    );
   }
 
   // ============================================================
