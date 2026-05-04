@@ -686,9 +686,21 @@
   const portraitEyes = [];
   const bg = document.createElement('canvas');
   bg.width = W; bg.height = H;
+
+  // Mr Wade's portrait is the only one painted from life. The headshot is
+  // drawn into the bottom-right portrait frame as soon as it loads — until
+  // then we render the procedural fallback so the hall isn't blank.
+  const headshotImg = new Image();
+  headshotImg.src = 'Headshot.jpg';
+  headshotImg.onload = () => paintHall(bg.getContext('2d'));
+
   paintHall(bg.getContext('2d'));
 
   function paintHall(c) {
+    // Reset eye registry — paintHall may run twice (once before the headshot
+    // loads, once after) and we don't want stale entries doubling up.
+    portraitEyes.length = 0;
+    c.clearRect(0, 0, W, H);
     // ============================
     // BARREL-VAULTED DOME (top ~220px) — based on Haileybury dining hall reference
     // ============================
@@ -903,9 +915,35 @@
       c.fillStyle = canvasGrad;
       c.fillRect(px + 11, py + 11, 86, 128);
 
-      if (idx === 5) {
-        // ====== MR WADE — present-day headmaster ======
-        // (the only portrait painted from life, hanging in pride of place)
+      if (idx === 5 && headshotImg.complete && headshotImg.naturalWidth > 0) {
+        // ====== MR WADE — actual headshot, painted from life ======
+        // Draw the photo into the canvas area of the frame using a centred
+        // "cover" crop so the face fills the portrait without distortion.
+        const fx = px + 11, fy = py + 11, fw = 86, fh = 128;
+        const iw = headshotImg.naturalWidth, ih = headshotImg.naturalHeight;
+        const targetAspect = fw / fh;
+        const srcAspect = iw / ih;
+        let sx, sy, sw, sh;
+        if (srcAspect > targetAspect) {
+          // photo wider than frame — crop sides
+          sh = ih;
+          sw = ih * targetAspect;
+          sx = (iw - sw) / 2;
+          sy = 0;
+        } else {
+          // photo taller than frame — crop top/bottom (favour the face,
+          // which sits in the upper third)
+          sw = iw;
+          sh = iw / targetAspect;
+          sx = 0;
+          sy = Math.max(0, (ih - sh) * 0.18);
+        }
+        c.drawImage(headshotImg, sx, sy, sw, sh, fx, fy, fw, fh);
+        // subtle warm overlay so the photo sits with the painted portraits
+        c.fillStyle = 'rgba(80,40,10,.08)';
+        c.fillRect(fx, fy, fw, fh);
+      } else if (idx === 5) {
+        // ====== MR WADE — procedural fallback while the photo loads ======
         const cx = px + 54, cy = py + 62;
         // shoulders / open-collar dark blazer
         c.fillStyle = '#1f2a3a';
@@ -1535,6 +1573,30 @@
     }
     return audioCtx;
   }
+
+  // ----- Background music -------------------------------------------------
+  // Browsers refuse to autoplay audio without a user gesture, so the track
+  // is created up front but only started inside startMusic() — which we
+  // call from the first keypress / pointer / overlay-button event.
+  const music = new Audio('Videogame.mp3');
+  music.loop = true;
+  music.volume = 0.35;
+  music.preload = 'auto';
+  let musicStarted = false;
+  function startMusic() {
+    if (musicStarted || muted) return;
+    musicStarted = true;
+    const p = music.play();
+    if (p && typeof p.catch === 'function') {
+      // Autoplay may still be blocked — leave the flag false so we retry
+      // on the next gesture.
+      p.catch(() => { musicStarted = false; });
+    }
+  }
+  function setMusicMuted(m) {
+    music.muted = m;
+    if (!m && !musicStarted) startMusic();
+  }
   // Track recently-fired tones so a flurry of merges can't spawn hundreds of
   // simultaneous oscillators (which has crashed Safari for high-combo runs).
   const _toneStamps = [];
@@ -1949,7 +2011,7 @@
       else hideOverlay();
     }
     if (e.key.toLowerCase() === 'r') reset();
-    if (e.key.toLowerCase() === 'm') muted = !muted;
+    if (e.key.toLowerCase() === 'm') { muted = !muted; setMusicMuted(muted); }
     if ((e.key === ' ' || e.key === 'ArrowDown') && !paused) {
       drop();
       e.preventDefault();
@@ -1984,7 +2046,16 @@
     ladleX = clamp(x, PLAY_LEFT + 30, PLAY_RIGHT - 30);
   });
   canvas.addEventListener('mousedown', () => {
+    startMusic();
     if (started && !paused && !gameOver) drop();
+  });
+
+  // First user gesture anywhere on the page is enough to satisfy autoplay
+  // policies and kick the music loop off — the listeners detach once they
+  // fire so we don't keep retrying.
+  ['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
+    const handler = () => { startMusic(); window.removeEventListener(evt, handler); };
+    window.addEventListener(evt, handler, { once: false });
   });
 
   // ----- Touch (iPad / phone): drag to aim, lift to drop -------------------
@@ -2092,6 +2163,7 @@
 
   document.getElementById('ovBtn').addEventListener('click', () => {
     playClick();
+    startMusic();
     if (gameOverPhase === 'enter-name') {
       // Save the score, then show the leaderboard view
       const nameInput = document.getElementById('ovName');
