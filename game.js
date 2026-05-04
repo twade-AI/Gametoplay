@@ -165,6 +165,7 @@
     { // 0
       name: 'Garden Pea',
       radius: 16, color: "#5fd400",
+      image: 'assets/pea.webp',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx, 3);
         wobblyCircle(ctx, 0, 0, r, seed);
@@ -177,6 +178,7 @@
     { // 1
       name: 'Baked Bean',
       radius: 26, color: "#ff5a14",
+      image: 'assets/bean.webp',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         ctx.beginPath();
@@ -194,6 +196,7 @@
     { // 2
       name: 'Crusty Crouton',
       radius: 38, color: "#f5c455",
+      image: 'assets/crouton.webp',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         // soft pillow / pebble — generous corner radius keeps it round on contact
@@ -218,6 +221,7 @@
     { // 3
       name: 'Battered Fish',
       radius: 52, color: "#ffc14a",
+      image: 'assets/fish.webp',
       draw(ctx, r, seed) {
         // Whole battered cod fillet: chunky teardrop body with a forked tail.
         // The fattest point sits inside the physics circle so contact reads
@@ -300,6 +304,7 @@
     { // 5
       name: 'Yorkshire Pudding',
       radius: 80, color: "#ffb338",
+      image: 'assets/yorkshire.webp',
       draw(ctx, r, seed) {
         // outer rim
         ctx.fillStyle = '#c97a1a'; inkOutline(ctx);
@@ -323,6 +328,7 @@
     { // 6
       name: 'Jacket Potato',
       radius: 92, color: "#cf7d24",
+      image: 'assets/potato.webp',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         const rng = mulberry(seed);
@@ -666,15 +672,44 @@
   const NORMAL_TIERS = 11;   // tiers 0..10 are the regular merge chain
 
   // ----- Pre-render food sprites to offscreen canvases ---------------------
-  const foodSprites = FOODS.map((food, i) => {
+  // Foods that ship with a real illustration (food.image) load it lazily and
+  // re-render their sprite once it's ready; until then the procedural draw
+  // is used so the page never shows a blank tile.
+  function spriteCanvas(food) {
     const pad = 28;
-    // generous bounds: christmas pud has flames above, chicken has legs below
     const sz = Math.ceil(food.radius * 3.2 + pad * 2);
     const c = document.createElement('canvas');
     c.width = sz; c.height = sz;
+    return c;
+  }
+  function paintProcedural(c, food, i) {
     const cx = c.getContext('2d');
-    cx.translate(sz / 2, sz / 2);
+    cx.clearRect(0, 0, c.width, c.height);
+    cx.save();
+    cx.translate(c.width / 2, c.height / 2);
     food.draw(cx, food.radius, 9171 + i * 137);
+    cx.restore();
+  }
+  function paintFromImage(c, food, img) {
+    const cx = c.getContext('2d');
+    cx.clearRect(0, 0, c.width, c.height);
+    // Scale the illustration so the food's longest dimension matches the
+    // physics diameter (with a small overshoot for outline / garnish that
+    // sits just outside the body).
+    const target = food.radius * 2.18;
+    const scale = target / Math.max(img.naturalWidth, img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    cx.drawImage(img, c.width / 2 - dw / 2, c.height / 2 - dh / 2, dw, dh);
+  }
+  const foodSprites = FOODS.map((food, i) => {
+    const c = spriteCanvas(food);
+    paintProcedural(c, food, i);
+    if (food.image) {
+      const img = new Image();
+      img.src = food.image;
+      img.onload = () => paintFromImage(c, food, img);
+    }
     return c;
   });
 
