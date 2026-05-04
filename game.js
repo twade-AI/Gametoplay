@@ -1506,10 +1506,14 @@
     body.tier = tier;
     body.spawnedAt = performance.now();
     body.squash = 0;
-    // Food spawns above the rim (in the chute under the ladle) and only
-    // becomes "in play" once it's dropped past the danger line. After that
-    // any return above the rim is an instant game over.
-    body.hasEnteredBowl = false;
+    // Game-over tracking. Two ways a body becomes "in play":
+    //   1. it was spawned already inside the bowl (i.e. by a merge whose
+    //      result fits below the danger line at birth), or
+    //   2. it was dropped from the ladle above the rim and has since
+    //      fallen past the danger line.
+    // Once in play, the rule is strict: any moment its top edge is above
+    // the danger line is an instant game over — no settling delay.
+    body.hasEnteredBowl = (y - f.radius) > DANGER_Y;
     items.add(body);
     World.add(world, body);
     return body;
@@ -2432,15 +2436,26 @@
   // ============================================================
   // GAME OVER detection
   // ============================================================
+  // Grace period for a freshly-dropped piece to fall from the ladle and
+  // clear the danger line. Tuned to comfortably exceed the worst-case
+  // fall time from LADLE_Y for any tier. After this, ANY food whose top
+  // is still above the danger line ends the game — including a merge
+  // result that was born straddling the rim.
+  const FALL_GRACE_MS = 900;
+
   function checkGameOver(dt) {
+    const now = performance.now();
     for (const b of items) {
       const r = FOODS[b.tier].radius;
       const top = b.position.y - r;
-      // Mark a piece as "in play" once it has fallen well past the rim
-      // (its top edge has cleared the danger line). After that, ANY
-      // re-emergence above the rim is an instant game over.
       if (!b.hasEnteredBowl) {
-        if (top > DANGER_Y) b.hasEnteredBowl = true;
+        if (top > DANGER_Y) {
+          b.hasEnteredBowl = true;
+        } else if (now - b.spawnedAt > FALL_GRACE_MS) {
+          // It hasn't entered the bowl in time — the pile is too high.
+          triggerGameOver();
+          return;
+        }
         continue;
       }
       if (top < DANGER_Y) {
