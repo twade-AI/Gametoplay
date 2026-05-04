@@ -1506,6 +1506,10 @@
     body.tier = tier;
     body.spawnedAt = performance.now();
     body.squash = 0;
+    // Food spawns above the rim (in the chute under the ladle) and only
+    // becomes "in play" once it's dropped past the danger line. After that
+    // any return above the rim is an instant game over.
+    body.hasEnteredBowl = false;
     items.add(body);
     World.add(world, body);
     return body;
@@ -2407,37 +2411,42 @@
   // GAME OVER detection
   // ============================================================
   function checkGameOver(dt) {
-    let overLine = false;
     for (const b of items) {
-      const top = b.position.y - FOODS[b.tier].radius;
-      const v = Math.hypot(b.velocity.x, b.velocity.y);
-      const age = (performance.now() - b.spawnedAt) / 1000;
-      // give freshly-dropped pieces a grace period
-      if (top < DANGER_Y && v < 0.6 && age > 1.5) { overLine = true; break; }
-    }
-    if (overLine) {
-      if (dangerStart === 0) dangerStart = performance.now();
-      else if (performance.now() - dangerStart > 1500) {
-        gameOver = true;
-        if (score > best) {
-          best = score;
-          localStorage.setItem('haileybury-dining-best', String(best));
-        }
-        playGameOver();
-        gameOverPhase = 'enter-name';
-        const isBest = score >= (leaderboard[0]?.score || 0) && score > 0;
-        const beatPersonal = score > best;
-        const head = isBest ? 'A new High Score!' : (beatPersonal ? 'A personal best!' : 'The bowl runneth over!');
-        showOverlay(
-          head,
-          `Add your name to the <b>Honours Board</b> to record your score.`,
-          'Submit score',
-          { showScoreBox: true },
-        );
+      const r = FOODS[b.tier].radius;
+      const top = b.position.y - r;
+      // Mark a piece as "in play" once it has fallen well past the rim
+      // (its top edge has cleared the danger line). After that, ANY
+      // re-emergence above the rim is an instant game over.
+      if (!b.hasEnteredBowl) {
+        if (top > DANGER_Y) b.hasEnteredBowl = true;
+        continue;
       }
-    } else {
-      dangerStart = 0;
+      if (top < DANGER_Y) {
+        triggerGameOver();
+        return;
+      }
     }
+  }
+
+  function triggerGameOver() {
+    if (gameOver) return;
+    gameOver = true;
+    dangerStart = 0;
+    if (score > best) {
+      best = score;
+      localStorage.setItem('haileybury-dining-best', String(best));
+    }
+    playGameOver();
+    gameOverPhase = 'enter-name';
+    const isBest = score >= (leaderboard[0]?.score || 0) && score > 0;
+    const beatPersonal = score > best;
+    const head = isBest ? 'A new High Score!' : (beatPersonal ? 'A personal best!' : 'The bowl runneth over!');
+    showOverlay(
+      head,
+      `Add your name to the <b>Honours Board</b> to record your score.`,
+      'Submit score',
+      { showScoreBox: true },
+    );
   }
 
   // ============================================================
