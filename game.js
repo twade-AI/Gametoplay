@@ -1573,6 +1573,30 @@
     }
     return audioCtx;
   }
+
+  // ----- Background music -------------------------------------------------
+  // Browsers refuse to autoplay audio without a user gesture, so the track
+  // is created up front but only started inside startMusic() — which we
+  // call from the first keypress / pointer / overlay-button event.
+  const music = new Audio('Videogame.mp3');
+  music.loop = true;
+  music.volume = 0.35;
+  music.preload = 'auto';
+  let musicStarted = false;
+  function startMusic() {
+    if (musicStarted || muted) return;
+    musicStarted = true;
+    const p = music.play();
+    if (p && typeof p.catch === 'function') {
+      // Autoplay may still be blocked — leave the flag false so we retry
+      // on the next gesture.
+      p.catch(() => { musicStarted = false; });
+    }
+  }
+  function setMusicMuted(m) {
+    music.muted = m;
+    if (!m && !musicStarted) startMusic();
+  }
   // Track recently-fired tones so a flurry of merges can't spawn hundreds of
   // simultaneous oscillators (which has crashed Safari for high-combo runs).
   const _toneStamps = [];
@@ -1987,7 +2011,7 @@
       else hideOverlay();
     }
     if (e.key.toLowerCase() === 'r') reset();
-    if (e.key.toLowerCase() === 'm') muted = !muted;
+    if (e.key.toLowerCase() === 'm') { muted = !muted; setMusicMuted(muted); }
     if ((e.key === ' ' || e.key === 'ArrowDown') && !paused) {
       drop();
       e.preventDefault();
@@ -2022,7 +2046,16 @@
     ladleX = clamp(x, PLAY_LEFT + 30, PLAY_RIGHT - 30);
   });
   canvas.addEventListener('mousedown', () => {
+    startMusic();
     if (started && !paused && !gameOver) drop();
+  });
+
+  // First user gesture anywhere on the page is enough to satisfy autoplay
+  // policies and kick the music loop off — the listeners detach once they
+  // fire so we don't keep retrying.
+  ['pointerdown', 'keydown', 'touchstart'].forEach((evt) => {
+    const handler = () => { startMusic(); window.removeEventListener(evt, handler); };
+    window.addEventListener(evt, handler, { once: false });
   });
 
   // ----- Touch (iPad / phone): drag to aim, lift to drop -------------------
@@ -2130,6 +2163,7 @@
 
   document.getElementById('ovBtn').addEventListener('click', () => {
     playClick();
+    startMusic();
     if (gameOverPhase === 'enter-name') {
       // Save the score, then show the leaderboard view
       const nameInput = document.getElementById('ovName');
