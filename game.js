@@ -360,6 +360,7 @@
     { // 7
       name: 'Sunday Roast Chicken',
       radius: 102, color: "#f0a02c",
+      image: 'assets/roast.webp',
       draw(ctx, r, seed) {
         ctx.fillStyle = this.color; inkOutline(ctx);
         ctx.beginPath();
@@ -436,6 +437,7 @@
     { // 9
       name: 'Flaming Christmas Pudding',
       radius: 116, color: "#3a1e0c",
+      image: 'assets/christmas.webp',
       draw(ctx, r, seed) {
         // FLAMES first (behind), drawn ABOVE the pudding visually
         const grad = ctx.createRadialGradient(0, -r * 1.0, 0, 0, -r * 0.7, r * 1.0);
@@ -597,6 +599,7 @@
     { // 11 — GOLDEN APPLE: merges with anything to bump it up one tier
       name: 'Golden Apple',
       radius: 30, color: '#f1c84f',
+      image: 'assets/apple.webp',
       special: 'apple',
       draw(ctx, r, seed) {
         // pulsing golden glow
@@ -632,6 +635,7 @@
     { // 12 — BURSAR'S BOMBSHELL: explodes on impact, knocks foods around
       name: "Bursar's Bombshell",
       radius: 34, color: '#1a1108',
+      image: 'assets/bomb.webp',
       special: 'bomb',
       draw(ctx, r, seed) {
         // body
