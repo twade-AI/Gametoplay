@@ -710,7 +710,7 @@
     // The sprites carry their own transparent padding, so a generous overshoot
     // is what makes the foods actually wrap together visually with no gaps
     // when the physics circles touch.
-    const target = food.radius * 2.55;
+    const target = food.radius * 2.35;
     const scale = target / Math.max(img.naturalWidth, img.naturalHeight);
     const dw = img.naturalWidth * scale;
     const dh = img.naturalHeight * scale;
@@ -2288,7 +2288,7 @@
     const x = clamp(ladleX + xJitter, PLAY_LEFT + r + 4, PLAY_RIGHT - r - 4);
     const b = spawnAt(nextTier, x, LADLE_Y + r + 10);
     Body.setVelocity(b, { x: (Math.random() - 0.5) * 2.6, y: 4 });
-    Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.18);
+    Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.04);
     nextTier = queuedTier;
     queuedTier = randomNextTier();
     drawNextPreview();
