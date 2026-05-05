@@ -79,7 +79,9 @@
   const PLAY_RIGHT  = 625;
   const PLAY_TOP    = 240;
   const PLAY_BOTTOM = 720;
-  const DANGER_Y    = 298;
+  // Game over fires the moment a settled piece's top edge crosses the bowl
+  // rim — i.e. the food has actually gone over the top.
+  const DANGER_Y    = PLAY_TOP;
   const LADLE_Y     = 200;
 
   // ----- Tiny seedable RNG (so hand-drawn art is stable) --------------------
@@ -704,10 +706,11 @@
   function paintFromImage(c, food, img) {
     const cx = c.getContext('2d');
     cx.clearRect(0, 0, c.width, c.height);
-    // Scale the illustration so the food's longest dimension matches the
-    // physics diameter (with a small overshoot for outline / garnish that
-    // sits just outside the body).
-    const target = food.radius * 2.18;
+    // Scale the illustration so it slightly overshoots the physics diameter.
+    // The sprites carry their own transparent padding, so a generous overshoot
+    // is what makes the foods actually wrap together visually with no gaps
+    // when the physics circles touch.
+    const target = food.radius * 2.55;
     const scale = target / Math.max(img.naturalWidth, img.naturalHeight);
     const dw = img.naturalWidth * scale;
     const dh = img.naturalHeight * scale;
@@ -2277,11 +2280,15 @@
   function drop() {
     if (dropCooldown > 0) return;
     const r = FOODS[nextTier].radius;
-    const x = clamp(ladleX, PLAY_LEFT + r + 4, PLAY_RIGHT - r - 4);
+    // Real horizontal scatter on every drop — both the spawn x and the
+    // initial velocity get a kick, so you can't just hold the ladle dead
+    // centre and rivet the button to win. Bigger pieces wobble more.
+    const wobble = 6 + r * 0.18;
+    const xJitter = (Math.random() - 0.5) * wobble;
+    const x = clamp(ladleX + xJitter, PLAY_LEFT + r + 4, PLAY_RIGHT - r - 4);
     const b = spawnAt(nextTier, x, LADLE_Y + r + 10);
-    // Push it down a bit harder so it hits the bowl (or the pile) with some
-    // gusto and does a livelier bounce on entry.
-    Body.setVelocity(b, { x: (Math.random() - 0.5) * 0.6, y: 4 });
+    Body.setVelocity(b, { x: (Math.random() - 0.5) * 2.6, y: 4 });
+    Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.18);
     nextTier = queuedTier;
     queuedTier = randomNextTier();
     drawNextPreview();
@@ -2586,7 +2593,7 @@
     ctx.fillStyle = '#7a1f2b';
     ctx.font = "bold 14px 'Caveat', cursive";
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('don’t pile above the rim!', PLAY_LEFT + 4, DANGER_Y - 10);
+    ctx.fillText('don’t go over the top!', PLAY_LEFT + 4, DANGER_Y + 12);
     ctx.restore();
   }
 
